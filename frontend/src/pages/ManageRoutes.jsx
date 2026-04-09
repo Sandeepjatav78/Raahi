@@ -324,8 +324,8 @@ const ManageRoutes = () => {
 
             {saving && (
               <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000]">
-                <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-slate-800/95 backdrop-blur-xl border border-orange-500/30 shadow-2xl">
-                  <div className="w-5 h-5 border-2 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+                <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-slate-800/95 backdrop-blur-xl border border-sky-500/30 shadow-2xl">
+                  <div className="w-5 h-5 border-2 border-sky-400 border-t-transparent rounded-full animate-spin"></div>
                   <span className="text-sm font-medium text-white">Saving route...</span>
                 </div>
               </div>

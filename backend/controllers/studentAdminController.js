@@ -4,7 +4,7 @@ const StudentAssignment = require('../models/StudentAssignment');
 const Bus = require('../models/Bus');
 const Stop = require('../models/Stop');
 const Route = require('../models/Route');
-const { sendWelcomeEmail } = require('../utils/emailService');
+const { sendWelcomeEmail, sendPasswordResetEmail } = require('../utils/emailService');
 
 const scrubPassword = (userDoc) => {
   if (!userDoc) return userDoc;
@@ -84,6 +84,7 @@ const createStudent = async (req, res) => {
       email: student.email,
       fullName: student.name || student.username,
       username: student.username,
+      temporaryPassword: plainPassword,
       busNumber,
       routeName,
       stopName
@@ -101,6 +102,7 @@ const createStudent = async (req, res) => {
 const updateStudent = async (req, res) => {
   try {
     const updates = {};
+    let plainPassword = null;
     ['username', 'name', 'phone', 'email'].forEach((field) => {
       if (req.body[field] !== undefined) {
         updates[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
@@ -108,20 +110,31 @@ const updateStudent = async (req, res) => {
     });
 
     if (req.body.password) {
-      const hashedPassword = await bcrypt.hash(req.body.password.trim(), 10);
+      plainPassword = req.body.password.trim();
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
       updates.password = hashedPassword;
+      updates.firstLogin = true;
     }
 
     const student = await User.findOneAndUpdate({ _id: req.params.id, role: 'student' }, updates, {
       new: true,
       runValidators: true
-    }).select('-password');
+    });
 
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    res.json(student);
+    if (plainPassword && student.email) {
+      sendPasswordResetEmail({
+        email: student.email,
+        fullName: student.name || student.username,
+        username: student.username,
+        temporaryPassword: plainPassword
+      }).catch(err => console.error('Password reset email failed:', err.message));
+    }
+
+    res.json(scrubPassword(student));
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

@@ -249,7 +249,7 @@ const Login = () => {
                     <button
                       type="button"
                       onClick={() => { setRegistrationSuccess(false); setIsSignUp(false); }}
-                      className="mt-3 text-sm font-semibold text-orange-600 hover:text-orange-700 transition-colors"
+                      className="mt-3 text-sm font-semibold text-sky-600 hover:text-sky-700 transition-colors"
                     >
                       Go to Sign In &rarr;
                     </button>
@@ -334,7 +334,7 @@ const Login = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-orange-500 transition-colors"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-500 transition-colors"
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -425,8 +425,8 @@ const Login = () => {
             </button>
 
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center">
-                <KeyRound className="w-5 h-5 text-orange-600" />
+              <div className="w-11 h-11 rounded-xl bg-sky-100 flex items-center justify-center">
+                <KeyRound className="w-5 h-5 text-sky-600" />
               </div>
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Forgot Password</h3>

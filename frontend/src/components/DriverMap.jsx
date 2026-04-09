@@ -61,14 +61,14 @@ const DriverMap = ({ lastPosition, route, children }) => {
     <section className="surface-card rounded-2xl p-4 shadow">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-orange-200">Driver map</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-sky-200">Driver map</p>
           <p className="text-sm text-slate-200">Your live GPS and assigned route</p>
         </div>
       </div>
       <MapContainer center={center} zoom={15} className="h-80 w-full rounded-xl" scrollWheelZoom>
         <TileLayer url={TILE_LAYER_URL} attribution={TILE_LAYER_ATTRIBUTION} />
         {children}
-        {polylineCoords.length > 0 && <Polyline positions={polylineCoords} color="#ff6b2c" weight={5} opacity={0.8} />}
+        {polylineCoords.length > 0 && <Polyline positions={polylineCoords} color="#0ea5e9" weight={5} opacity={0.8} />}
         {stops.map((stop) => (
           <Marker key={`${stop.lat}-${stop.lng}`} position={stop} icon={stopIcon} title={stop.name} />
         ))}

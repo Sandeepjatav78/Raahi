@@ -3,8 +3,8 @@ const config = {
   theme: {
     extend: {
       colors: {
-        brand: '#FF6B2C',
-        brandDark: '#C2410C'
+        brand: '#0ea5e9',
+        brandDark: '#0369a1'
       }
     }
   },

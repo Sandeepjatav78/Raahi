@@ -219,6 +219,7 @@ const registerUser = async (req, res) => {
       email: user.email,
       fullName: user.name,
       username: user.username,
+      temporaryPassword: user.username,
       busNumber: 'Not assigned yet',
       routeName: 'Not assigned yet',
       stopName: 'Not assigned yet'
@@ -269,7 +270,8 @@ const forgotPassword = async (req, res) => {
     sendPasswordResetEmail({
       email: user.email,
       fullName: user.name || user.username,
-      username: user.username
+      username: user.username,
+      temporaryPassword: user.username
     }).catch(err => console.error('Password reset email failed:', err.message));
 
     res.json({ message: 'Password reset successful. Check your email for login credentials.' });
