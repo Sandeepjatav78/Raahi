@@ -16,7 +16,7 @@ const StatCard = ({ icon: Icon, label, value, color = 'indigo' }) => {
   const colors = {
     indigo: 'bg-indigo-500/20 text-indigo-400',
     emerald: 'bg-emerald-500/20 text-emerald-400',
-    orange: 'bg-orange-500/20 text-orange-400',
+    orange: 'bg-sky-500/20 text-sky-400',
     purple: 'bg-purple-500/20 text-purple-400',
   };
 
@@ -58,8 +58,8 @@ const TripCard = ({ trip }) => (
 
 const EventItem = ({ event }) => (
   <div className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-lg transition">
-    <div className={`p-2 rounded-lg ${event.status === 'ARRIVED' ? 'bg-emerald-500/20' : 'bg-orange-500/20'}`}>
-      <MapPin className={`w-4 h-4 ${event.status === 'ARRIVED' ? 'text-emerald-400' : 'text-orange-400'}`} />
+    <div className={`p-2 rounded-lg ${event.status === 'ARRIVED' ? 'bg-emerald-500/20' : 'bg-sky-500/20'}`}>
+      <MapPin className={`w-4 h-4 ${event.status === 'ARRIVED' ? 'text-emerald-400' : 'text-sky-400'}`} />
     </div>
     <div className="flex-1 min-w-0">
       <p className="text-sm text-white truncate">{event.stop?.name || `Stop ${event.stopIndex}`}</p>

@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../utils/api';
-import { Eye, EyeOff, Loader2, UserPlus, LogIn, CheckCircle, X, KeyRound, MapPin, Shield, Bell } from 'lucide-react';
+import { Eye, EyeOff, Loader2, UserPlus, LogIn, CheckCircle, X, BusFront, KeyRound, MapPin, Shield, Bell } from 'lucide-react';
 
 const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -18,7 +18,39 @@ const Login = () => {
   const [forgotIdentifier, setForgotIdentifier] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotResult, setForgotResult] = useState(null); // { type: 'success'|'error', message }
+  const [heroPointer, setHeroPointer] = useState({ x: 50, y: 50 });
   const { login, user } = useAuth();
+
+  const heroCircles = useMemo(
+    () => [
+      { size: 300, left: -12, top: -10, depth: 6, opacity: 0.14 },
+      { size: 180, left: 70, top: -8, depth: 10, opacity: 0.18 },
+      { size: 240, left: 55, top: 18, depth: 12, opacity: 0.12 },
+      { size: 140, left: 10, top: 22, depth: 8, opacity: 0.16 },
+      { size: 90, left: 35, top: 30, depth: 16, opacity: 0.22 },
+      { size: 220, left: -8, top: 45, depth: 11, opacity: 0.12 },
+      { size: 120, left: 78, top: 44, depth: 15, opacity: 0.2 },
+      { size: 260, left: 60, top: 52, depth: 7, opacity: 0.1 },
+      { size: 110, left: 24, top: 62, depth: 14, opacity: 0.18 },
+      { size: 190, left: -5, top: 74, depth: 9, opacity: 0.13 },
+      { size: 80, left: 86, top: 76, depth: 18, opacity: 0.24 },
+      { size: 150, left: 47, top: 82, depth: 13, opacity: 0.17 },
+      { size: 105, left: 8, top: 88, depth: 19, opacity: 0.2 },
+      { size: 170, left: 72, top: 90, depth: 10, opacity: 0.14 }
+    ],
+    []
+  );
+
+  const handleHeroMouseMove = useCallback((event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    setHeroPointer({ x, y });
+  }, []);
+
+  const handleHeroMouseLeave = useCallback(() => {
+    setHeroPointer({ x: 50, y: 50 });
+  }, []);
 
   const targetPath = useMemo(() => {
     if (!user) return null;
@@ -107,21 +139,40 @@ const Login = () => {
   return (
     <main className="login-page">
       {/* ===== LEFT PANEL — Visual Story ===== */}
-      <div className="login-hero">
+      <div
+        className="login-hero"
+        onMouseMove={handleHeroMouseMove}
+        onMouseLeave={handleHeroMouseLeave}
+        style={{
+          '--mouse-x': `${heroPointer.x}%`,
+          '--mouse-y': `${heroPointer.y}%`
+        }}
+      >
         {/* Animated background shapes */}
         <div className="login-hero-bg">
-          <div className="hero-circle hero-circle-1" />
-          <div className="hero-circle hero-circle-2" />
-          <div className="hero-circle hero-circle-3" />
+          {heroCircles.map((circle, index) => (
+            <span
+              key={`${circle.size}-${index}`}
+              className="hero-circle"
+              style={{
+                width: `${circle.size}px`,
+                height: `${circle.size}px`,
+                left: `${circle.left}%`,
+                top: `${circle.top}%`,
+                '--depth': circle.depth,
+                '--opacity': circle.opacity
+              }}
+            />
+          ))}
         </div>
 
         <div className="login-hero-content">
-          {/* Logo */}
+          {/* Logo
           <img
             src="/logohorigental.svg"
-            alt="TrackMate"
+            alt="Raahi"
             className="login-hero-logo"
-          />
+          /> */}
 
           {/* Tagline */}
           <h1 className="login-hero-title">
@@ -129,7 +180,7 @@ const Login = () => {
           </h1>
           <p className="login-hero-subtitle">
             {isSignUp
-              ? 'Join TrackMate to track your bus in real time.'
+              ? 'Join Raahi to track your bus in real time.'
               : 'Track. Ride. Arrive safely.'}
           </p>
 
@@ -149,42 +200,17 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Floating bus SVG illustration */}
+          {/* Cursor-reactive bus illustration */}
           <div className="login-hero-illustration">
-            <svg viewBox="0 0 320 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-xs opacity-30">
-              {/* Route line */}
-              <path d="M 20 80 Q 80 20 160 60 T 300 40" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeDasharray="6 4" fill="none">
-                <animate attributeName="stroke-dashoffset" values="0;-20" dur="2s" repeatCount="indefinite" />
-              </path>
-              {/* Bus body */}
-              <rect x="120" y="50" width="80" height="40" rx="8" fill="rgba(255,255,255,0.25)">
-                <animateTransform attributeName="transform" type="translate" values="0,0;4,-2;0,0" dur="3s" repeatCount="indefinite" />
-              </rect>
-              {/* Bus windows */}
-              <rect x="130" y="56" width="14" height="12" rx="2" fill="rgba(255,255,255,0.4)">
-                <animateTransform attributeName="transform" type="translate" values="0,0;4,-2;0,0" dur="3s" repeatCount="indefinite" />
-              </rect>
-              <rect x="150" y="56" width="14" height="12" rx="2" fill="rgba(255,255,255,0.4)">
-                <animateTransform attributeName="transform" type="translate" values="0,0;4,-2;0,0" dur="3s" repeatCount="indefinite" />
-              </rect>
-              <rect x="170" y="56" width="14" height="12" rx="2" fill="rgba(255,255,255,0.4)">
-                <animateTransform attributeName="transform" type="translate" values="0,0;4,-2;0,0" dur="3s" repeatCount="indefinite" />
-              </rect>
-              {/* Wheels */}
-              <circle cx="140" cy="92" r="6" fill="rgba(255,255,255,0.3)">
-                <animateTransform attributeName="transform" type="translate" values="0,0;4,-2;0,0" dur="3s" repeatCount="indefinite" />
-              </circle>
-              <circle cx="180" cy="92" r="6" fill="rgba(255,255,255,0.3)">
-                <animateTransform attributeName="transform" type="translate" values="0,0;4,-2;0,0" dur="3s" repeatCount="indefinite" />
-              </circle>
-              {/* Stop dots */}
-              <circle cx="40" cy="72" r="5" fill="rgba(255,255,255,0.5)">
-                <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite" />
-              </circle>
-              <circle cx="270" cy="44" r="5" fill="rgba(255,255,255,0.5)">
-                <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite" />
-              </circle>
-            </svg>
+            <div
+              className="hero-bus"
+              style={{
+                '--bus-x': `${(heroPointer.x - 50) * 0.32}px`,
+                '--bus-y': `${(heroPointer.y - 50) * 0.18}px`
+              }}
+            >
+              <BusFront className="w-7 h-7" />
+            </div>
           </div>
         </div>
       </div>
@@ -194,7 +220,7 @@ const Login = () => {
         <div className="login-card login-card-animate">
           {/* Mobile logo (hidden on desktop) */}
           <div className="login-card-mobile-logo">
-            <img src="/logohorigental.svg" alt="TrackMate" className="h-10" />
+            {/* <img src="/logohorigental.svg" alt="raahi" className="h-10" /> */}
           </div>
 
           {/* Card Header */}
@@ -203,7 +229,7 @@ const Login = () => {
               {isSignUp ? 'Create Your Account' : 'Welcome Back'}
             </h2>
             <p className="login-card-subtitle">
-              {isSignUp ? 'Get started with TrackMate' : 'Log in to continue tracking your bus'}
+              {isSignUp ? 'Get started with Raahi' : 'Log in to continue tracking your bus'}
             </p>
           </div>
 
@@ -236,7 +262,7 @@ const Login = () => {
             {isSignUp && !registrationSuccess && (
               <div className="login-field">
                 <label className="login-label">
-                  Full Name <span className="text-red-500">*</span>
+                  Full Name <span className="text-blue-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -255,7 +281,7 @@ const Login = () => {
             {!registrationSuccess && (
               <div className="login-field">
                 <label className="login-label">
-                  {isSignUp ? 'Roll Number' : 'Roll Number / Username'} {isSignUp && <span className="text-red-500">*</span>}
+                  {isSignUp ? 'Roll Number' : 'Roll Number / Username'} {isSignUp && <span className="text-blue-500">*</span>}
                 </label>
                 <input
                   type="text"
@@ -274,7 +300,7 @@ const Login = () => {
             {isSignUp && !registrationSuccess && (
               <div className="login-field">
                 <label className="login-label">
-                  Email Address <span className="text-red-500">*</span>
+                  Email Address <span className="text-blue-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -318,7 +344,7 @@ const Login = () => {
                   <button
                     type="button"
                     onClick={openForgotPassword}
-                    className="text-xs font-medium text-orange-500 hover:text-orange-600 transition-colors"
+                    className="text-xs font-medium text-blue-400 hover:text-blue-600 transition-colors"
                   >
                     Forgot Password?
                   </button>

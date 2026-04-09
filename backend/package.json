@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "cleanup:legacy-admins": "node scripts/cleanupLegacyAdmins.js",
+    "sync:admin-env": "node scripts/resetAdminFromEnv.js"
   },
   "dependencies": {
     "@turf/turf": "^6.5.0",

@@ -121,10 +121,10 @@ const Profile = () => {
         const updatedUser = { ...user, firstLogin: false, name: formData.name, phone: formData.phone };
         setUser(updatedUser);
         localStorage.setItem('tm_user', JSON.stringify(updatedUser));
-        toast.success('Welcome to TrackMate! Redirecting to dashboard...', { duration: 2000 });
+        toast.success('Welcome to Raahi! Redirecting to dashboard...', { duration: 2000 });
         setTimeout(() => {
-          navigate(roleRedirect[user.role] || '/student', { replace: true });
-        }, 1500);
+          navigate(roleRedirect[updatedUser.role] || '/');
+        }, 1200);
       }
     } catch (error) {
       console.error(error);

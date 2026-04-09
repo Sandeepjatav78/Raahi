@@ -68,7 +68,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 app.get('/', (_req, res) => {
-  res.json({ message: 'TrackMate backend is running' });
+  res.json({ message: 'Raahi backend is running' });
 });
 
 // Global error handler - must be last middleware
@@ -128,7 +128,7 @@ const start = async () => {
   await ensureDefaultAccounts();
   server.listen(PORT, '0.0.0.0', () => {
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`🚍 TrackMate backend listening on port ${PORT}`);
+      console.log(`🚍 Raahi backend listening on port ${PORT}`);
     }
   });
 };

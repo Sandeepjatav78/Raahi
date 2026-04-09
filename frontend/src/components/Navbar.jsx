@@ -84,11 +84,11 @@ const Navbar = () => {
             to={user ? (user.role === 'admin' ? '/admin' : `/${user.role}`) : '/login'}
             className="nav-logo"
           >
-            <img
+            {/* <img
               src="/logohorigental.svg"
               alt="TrackMate"
               className="nav-logo-img"
-            />
+            /> */}
           </Link>
 
           {/* Center — Desktop Admin Nav */}

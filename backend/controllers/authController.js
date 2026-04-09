@@ -96,11 +96,42 @@ const getProfile = (req, res) => {
 // Ensures there is at least one admin as per spec
 // This function is now only called during server startup, not on login attempts
 const ensureDefaultAccounts = async () => {
-  const admin = await User.findOne({ username: 'ad1' });
-  if (!admin) {
-    const hashedPassword = await hashPassword('ad1');
-    await User.create({ username: 'ad1', password: hashedPassword, role: 'admin', name: 'TrackMate Admin' });
-    console.log('⚠️  Seeded default admin account (ad1/ad1) - CHANGE THIS PASSWORD IN PRODUCTION!');
+  const defaultUsername = (process.env.ADMIN_USERNAME || '').trim();
+  const defaultPassword = (process.env.ADMIN_PASSWORD || '').trim();
+  const defaultName = (process.env.ADMIN_NAME || 'Raahi Admin').trim();
+  const defaultEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+
+  if (!defaultUsername || !defaultPassword) {
+    console.warn('⚠️  Skipping default admin seed: set ADMIN_USERNAME and ADMIN_PASSWORD in environment variables.');
+    return;
+  }
+
+  const hashedPassword = await hashPassword(defaultPassword);
+
+  const escapedUsername = defaultUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const setOnInsert = {
+    username: defaultUsername,
+    password: hashedPassword,
+    role: 'admin',
+    name: defaultName,
+    firstLogin: true
+  };
+
+  if (defaultEmail) {
+    setOnInsert.email = defaultEmail;
+  }
+
+  // Atomic upsert prevents duplicate-key races when multiple processes start together.
+  const result = await User.updateOne(
+    { username: { $regex: new RegExp(`^${escapedUsername}$`, 'i') } },
+    {
+      $setOnInsert: setOnInsert
+    },
+    { upsert: true }
+  );
+
+  if (result.upsertedCount > 0) {
+    console.log(`⚠️  Seeded default admin account (${defaultUsername}) from environment variables.`);
   }
 };
 
