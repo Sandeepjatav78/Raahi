@@ -24,6 +24,7 @@ const serializeUser = (user) => ({
   name: user.name,
   email: user.email,
   phone: user.phone,
+  photoUrl: user.photoUrl || null,
   firstLogin: user.firstLogin,
   assignedBusId: user.assignedBusId,
   assignedStopId: user.assignedStopId
@@ -138,7 +139,7 @@ const ensureDefaultAccounts = async () => {
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, phone, email, password, currentPassword } = req.body;
+    const { name, phone, email, password, currentPassword, photoUrl } = req.body;
     const user = await User.findById(userId);
 
     if (!user) {
@@ -148,6 +149,9 @@ const updateProfile = async (req, res) => {
     if (name) user.name = name.trim();
     if (phone) user.phone = phone.trim();
     if (email) user.email = email.trim().toLowerCase();
+    if (photoUrl !== undefined) {
+      user.photoUrl = typeof photoUrl === 'string' && photoUrl.trim() ? photoUrl.trim() : null;
+    }
 
     // Password change requires current password verification
     if (password) {
@@ -178,6 +182,7 @@ const registerUser = async (req, res) => {
     const username = typeof req.body.username === 'string' ? req.body.username.trim().toUpperCase() : '';
     const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
     const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const photoUrl = typeof req.body.photoUrl === 'string' ? req.body.photoUrl.trim() : null;
 
     if (!username) {
       return res.status(400).json({ message: 'Roll number is required' });
@@ -211,6 +216,7 @@ const registerUser = async (req, res) => {
       role: 'student',
       name,
       email,
+      photoUrl: photoUrl || null,
       firstLogin: true // Force password change on first login
     });
 

@@ -130,7 +130,11 @@ const Navbar = () => {
                   className="nav-avatar-btn"
                   title="Profile"
                 >
-                  <User className="w-[1.15rem] h-[1.15rem]" />
+                  {user.photoUrl ? (
+                    <img src={user.photoUrl} alt="Profile" className="w-[1.15rem] h-[1.15rem] rounded-full object-cover" />
+                  ) : (
+                    <User className="w-[1.15rem] h-[1.15rem]" />
+                  )}
                 </button>
                 {profileOpen && (
                   <div className="nav-dropdown">
@@ -205,8 +209,12 @@ const Navbar = () => {
             {user && (
               <div className="nav-drawer-user">
                 <div className="nav-drawer-avatar">
-                  <User className="w-5 h-5" />
-                </div>
+              {user.photoUrl ? (
+                <img src={user.photoUrl} alt="Profile" className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                <User className="w-5 h-5" />
+              )}
+            </div>
                 <div>
                   <p className="nav-drawer-username">{user.name || user.username}</p>
                   <p className="nav-drawer-userrole">{user.role}</p>

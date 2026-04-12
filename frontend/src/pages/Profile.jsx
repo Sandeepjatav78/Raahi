@@ -23,6 +23,7 @@ const Profile = () => {
     role: '',
     name: '',
     phone: '',
+    photoUrl: '',
     currentPassword: '',
     password: ''
   });
@@ -43,6 +44,7 @@ const Profile = () => {
         role: user.role || '',
         name: user.name || '',
         phone: user.phone || '',
+        photoUrl: user.photoUrl || '',
         currentPassword: '',
         password: ''
       });
@@ -77,6 +79,21 @@ const Profile = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData((prev) => ({ ...prev, photoUrl: reader.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleBusChange = (e) => {
     setSelectedBusId(e.target.value);
     setSelectedStopSeq(''); // Reset stop when bus changes
@@ -94,7 +111,8 @@ const Profile = () => {
 
     const payload = {
       name: formData.name,
-      phone: formData.phone
+      phone: formData.phone,
+      photoUrl: formData.photoUrl || null
     };
     if (formData.password) {
       payload.password = formData.password;
@@ -102,8 +120,8 @@ const Profile = () => {
     }
 
     try {
-      // Update profile
-      await api.put('/auth/profile', payload);
+      // Update profile and refresh auth user state
+      const { data: updatedUser } = await api.put('/auth/profile', payload);
 
       // Update bus assignment for students
       if (formData.role === 'student' && selectedBusId) {
@@ -113,14 +131,13 @@ const Profile = () => {
         });
       }
 
-      toast.success('Profile updated successfully!');
+      setUser(updatedUser);
+      localStorage.setItem('tm_user', JSON.stringify(updatedUser));
       setFormData(prev => ({ ...prev, currentPassword: '', password: '' }));
 
-      // If this was a first login, update user state and redirect to dashboard
-      if (user?.firstLogin) {
-        const updatedUser = { ...user, firstLogin: false, name: formData.name, phone: formData.phone };
-        setUser(updatedUser);
-        localStorage.setItem('tm_user', JSON.stringify(updatedUser));
+      toast.success('Profile updated successfully!');
+
+      if (user?.firstLogin && !updatedUser.firstLogin) {
         toast.success('Welcome to Raahi! Redirecting to dashboard...', { duration: 2000 });
         setTimeout(() => {
           navigate(roleRedirect[updatedUser.role] || '/');
@@ -172,9 +189,17 @@ const Profile = () => {
             {/* Profile Header */}
             <header className="profile-header profile-card-animate">
               <div className="profile-avatar">
+              {formData.photoUrl ? (
+                <img
+                  src={formData.photoUrl}
+                  alt="Profile"
+                  className="w-full h-full"
+                />
+              ) : (
                 <User className="w-10 h-10 text-white" />
-              </div>
-              <h1 className="profile-name">{formData.name || formData.username}</h1>
+              )}
+            </div>
+            <h1 className="profile-name">{formData.name || formData.username}</h1>
               <span className={`profile-badge ${getRoleBadge(formData.role)}`}>
                 {formData.role}
               </span>
@@ -377,6 +402,25 @@ const Profile = () => {
                 </div>
 
                 <div className="profile-form-fields">
+                  <div className="profile-field">
+                    <label className="profile-label">Profile Photo</label>
+                    <div className="profile-input-wrap">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoChange}
+                        className="profile-input"
+                      />
+                    </div>
+                    {formData.photoUrl && (
+                      <img
+                        src={formData.photoUrl}
+                        alt="Preview"
+                        className="mt-3 w-24 h-24 rounded-full object-cover border border-white/10"
+                      />
+                    )}
+                  </div>
+
                   <div className="profile-field">
                     <label className="profile-label">Full Name</label>
                     <div className="profile-input-wrap">

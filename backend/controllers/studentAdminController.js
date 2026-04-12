@@ -20,7 +20,7 @@ const listStudents = async (_req, res) => {
 
 const createStudent = async (req, res) => {
   try {
-    const { username, password, name, phone, email, busId, stopId } = req.body;
+    const { username, password, name, phone, email, busId, stopId, photoUrl } = req.body;
     if (!username) {
       return res.status(400).json({ message: 'username is required' });
     }
@@ -47,6 +47,7 @@ const createStudent = async (req, res) => {
       name,
       phone,
       email: email.trim().toLowerCase(),
+      photoUrl: typeof photoUrl === 'string' && photoUrl.trim() ? photoUrl.trim() : null,
       firstLogin: true // Force password change on first login
     });
 
@@ -103,11 +104,15 @@ const updateStudent = async (req, res) => {
   try {
     const updates = {};
     let plainPassword = null;
-    ['username', 'name', 'phone', 'email'].forEach((field) => {
+    ['username', 'name', 'phone', 'email', 'photoUrl'].forEach((field) => {
       if (req.body[field] !== undefined) {
         updates[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
       }
     });
+
+    if (req.body.photoUrl !== undefined) {
+      updates.photoUrl = req.body.photoUrl ? req.body.photoUrl.trim() : null;
+    }
 
     if (req.body.password) {
       plainPassword = req.body.password.trim();

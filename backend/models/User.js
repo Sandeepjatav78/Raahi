@@ -33,6 +33,11 @@ const userSchema = new mongoose.Schema(
       sparse: true, // Allow null but unique when set
       match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address']
     },
+    photoUrl: {
+      type: String,
+      trim: true,
+      default: null
+    },
     firstLogin: {
       type: Boolean,
       default: true // Force password change on first login

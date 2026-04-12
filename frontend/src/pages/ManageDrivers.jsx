@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import TrackMateLoader from '../components/TrackMateLoader';
 
-const blankForm = { username: '', password: '', name: '', phone: '' };
+const blankForm = { username: '', password: '', name: '', phone: '', photoUrl: '' };
 
 /* Stat Card Component */
 const StatCard = ({ icon: Icon, label, value, subtitle, color = 'indigo' }) => {
@@ -46,7 +46,15 @@ const DriverCard = ({ driver, onEdit, onDelete }) => {
           <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
             isAssigned ? 'bg-emerald-500/20' : 'bg-slate-700'
           }`}>
-            <User className={`w-5 h-5 ${isAssigned ? 'text-emerald-400' : 'text-slate-400'}`} />
+            {driver.photoUrl ? (
+              <img
+                src={driver.photoUrl}
+                alt={driver.name || driver.username}
+                className="w-10 h-10 rounded-full object-cover"
+              />
+            ) : (
+              <User className={`w-5 h-5 ${isAssigned ? 'text-emerald-400' : 'text-slate-400'}`} />
+            )}
           </div>
           <div className="min-w-0">
             <h3 className="text-white font-semibold truncate">{driver.name || 'Unnamed'}</h3>
@@ -128,7 +136,13 @@ const ManageDrivers = () => {
 
   const openEdit = (driver) => {
     setEditingDriver(driver);
-    setForm({ username: driver.username, password: '', name: driver.name || '', phone: driver.phone || '' });
+    setForm({
+      username: driver.username,
+      password: '',
+      name: driver.name || '',
+      phone: driver.phone || '',
+      photoUrl: driver.photoUrl || ''
+    });
     setDrawerOpen(true);
   };
 
@@ -137,10 +151,15 @@ const ManageDrivers = () => {
     const payload = {
       username: form.username,
       name: form.name,
-      phone: form.phone
+      phone: form.phone,
+      photoUrl: form.photoUrl || null
     };
     if (!editingDriver || form.password.trim()) {
       payload.password = form.password.trim() || form.username;
+    }
+
+    if (editingDriver && form.photoUrl === '') {
+      payload.photoUrl = null;
     }
 
     try {

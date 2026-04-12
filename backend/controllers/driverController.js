@@ -29,7 +29,7 @@ const computeSnapshotEtaMinutes = ({ orderedStops = [], currentIndex = 0, target
 // Admin: create driver accounts quickly (password defaults to username when missing)
 const createDriverAccount = async (req, res) => {
   try {
-    const { username, password, name, phone } = req.body;
+    const { username, password, name, phone, photoUrl } = req.body;
     const plainPassword = password || username;
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
     
@@ -38,7 +38,8 @@ const createDriverAccount = async (req, res) => {
       password: hashedPassword,
       role: 'driver',
       name,
-      phone
+      phone,
+      photoUrl: typeof photoUrl === 'string' && photoUrl.trim() ? photoUrl.trim() : null
     });
     res.status(201).json(driver);
   } catch (error) {
@@ -54,11 +55,15 @@ const getDrivers = async (_req, res) => {
 const updateDriverAccount = async (req, res) => {
   try {
     const updates = {};
-    ['username', 'name', 'phone'].forEach((field) => {
+    ['username', 'name', 'phone', 'photoUrl'].forEach((field) => {
       if (req.body[field] !== undefined) {
         updates[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
       }
     });
+
+    if (req.body.photoUrl !== undefined) {
+      updates.photoUrl = req.body.photoUrl ? req.body.photoUrl.trim() : null;
+    }
 
     if (req.body.password) {
       updates.password = await bcrypt.hash(req.body.password.trim(), 10);

@@ -349,16 +349,22 @@ input, select, textarea {
 }
 
 /* Background overrides for light theme */
-[data-theme="light"] .bg-slate-800\/50,
-[data-theme="light"] .bg-slate-800\/80,
-[data-theme="light"] .bg-slate-800 {
-  background-color: rgba(255, 255, 255, 0.9) !important;
+[data-theme="light"] [class*="bg-slate-900"] {
+  background-color: rgba(248, 250, 252, 0.95) !important;
 }
 
-[data-theme="light"] .bg-slate-900,
-[data-theme="light"] .bg-slate-900\/95,
-[data-theme="light"] .bg-slate-900\/70 {
+[data-theme="light"] [class*="bg-slate-800"] {
   background-color: rgba(248, 250, 252, 0.95) !important;
+}
+
+[data-theme="light"] .hover\:bg-slate-800\/95:hover,
+[data-theme="light"] .hover\:bg-slate-800\/60:hover,
+[data-theme="light"] .hover\:bg-slate-700\/50:hover {
+  background-color: rgba(241, 245, 249, 0.95) !important;
+}
+
+[data-theme="light"] .border-slate-700\/50 {
+  border-color: rgba(100, 116, 139, 0.35) !important;
 }
 
 /* Border overrides */
@@ -1941,6 +1947,14 @@ body:not([data-theme]) .login-modal .text-gray-700 {
   justify-content: center;
   margin: 0 auto 1rem;
   box-shadow: 0 4px 16px rgba(14, 165, 233, 0.3);
+  overflow: hidden;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 
 .profile-name {
