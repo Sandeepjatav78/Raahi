@@ -24,15 +24,60 @@ const app = express();
 // Trust proxy on hosted platforms (Render, Heroku, etc.) — required for rate limiting
 app.set('trust proxy', 1);
 
-// CORS configuration - use specific origins in production
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:5173', 'http://localhost:3000'];
+const normalizeOrigin = (origin) => (origin || '').trim().replace(/\/+$/, '');
 
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? allowedOrigins : '*',
-  credentials: true
-}));
+// CORS configuration
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(normalizeOrigin)
+  .filter(Boolean);
+
+const defaultDevOrigins = ['http://localhost:5173', 'http://localhost:3000'];
+
+const corsOptions = {
+  credentials: true,
+  origin: (origin, callback) => {
+    // Allow non-browser clients (curl/Postman/server-to-server)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    const incomingOrigin = normalizeOrigin(origin);
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    if (isDev) {
+      return callback(null, true);
+    }
+
+    // In production, explicitly allow configured origins.
+    if (allowedOrigins.includes(incomingOrigin)) {
+      return callback(null, true);
+    }
+
+    // Optional convenience: allow Vercel preview deployments.
+    try {
+      const hostname = new URL(incomingOrigin).hostname;
+      if (hostname.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+    } catch (_e) {
+      // Ignore parse errors and continue to rejection below.
+    }
+
+    // Safe fallback for production if ALLOWED_ORIGINS is not configured yet.
+    if (allowedOrigins.length === 0) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Not allowed by CORS'));
+  }
+};
+
+if (process.env.NODE_ENV !== 'production' && allowedOrigins.length === 0) {
+  defaultDevOrigins.forEach((origin) => allowedOrigins.push(origin));
+}
+
+app.use(cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -103,7 +148,10 @@ process.on('uncaughtException', (error) => {
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: {
+    origin: corsOptions.origin,
+    credentials: true
+  }
 });
 app.set('io', io);
 
