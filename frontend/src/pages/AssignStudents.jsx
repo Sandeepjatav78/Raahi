@@ -5,7 +5,7 @@ import Drawer from '../components/Drawer';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { 
   MapPin, Users, Bus, Search, X, Edit2, Trash2, 
-  UserPlus, CheckCircle, AlertCircle, ChevronDown, Plus
+  UserPlus, CheckCircle, AlertCircle, ChevronDown, Plus, Phone
 } from 'lucide-react';
 
 /* Stat Card Component */
@@ -45,6 +45,10 @@ const AssignmentRow = ({ assignment, onEdit, onDelete }) => (
           <div className="min-w-0">
             <p className="text-white font-medium truncate">{assignment.student?.name || 'Unnamed'}</p>
             <p className="text-xs text-slate-500">@{assignment.student?.username}</p>
+            <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+              <Phone className="w-3.5 h-3.5" />
+              <span>{assignment.student?.phone || 'No phone number'}</span>
+            </p>
           </div>
         </div>
       </div>
@@ -387,6 +391,7 @@ const AssignStudents = () => {
                     {filteredStudents.map((student) => (
                       <option key={student._id} value={student._id}>
                         {student.name || student.username} · {student.username}
+                        <span className="block text-xs text-slate-500 mt-0.5">{student.phone || 'No phone number'}</span>
                       </option>
                     ))}
                   </select>

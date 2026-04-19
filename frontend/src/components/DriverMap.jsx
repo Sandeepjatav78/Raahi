@@ -1,8 +1,8 @@
-import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Polyline, TileLayer, useMap } from 'react-leaflet';
 import { useEffect, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { ELURU_CENTER, TILE_LAYER_ATTRIBUTION, TILE_LAYER_URL } from '../constants/geo';
+import { ELURU_CENTER, PIET_COLLEGE, TILE_LAYER_ATTRIBUTION, TILE_LAYER_URL } from '../constants/geo';
 
 const driverIcon = new L.Icon({
   iconUrl: '/markers/bus.png',
@@ -16,6 +16,13 @@ const stopIcon = new L.Icon({
   iconSize: [30, 30],
   iconAnchor: [15, 30],
   popupAnchor: [0, -30]
+});
+
+const collegeIcon = L.divIcon({
+  className: 'college-map-pin',
+  html: '<div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(14,165,233,0.9);color:#fff;font-size:18px;box-shadow:0 10px 24px rgba(14,165,233,0.35);border:2px solid rgba(255,255,255,0.85)">🏫</div>',
+  iconSize: [36, 36],
+  iconAnchor: [18, 18]
 });
 
 const deriveStops = (route) => {
@@ -55,7 +62,7 @@ const DriverMap = ({ lastPosition, route, children }) => {
     if (!route?.geojson?.coordinates) return [];
     return route.geojson.coordinates.map(([lng, lat]) => [lat, lng]);
   }, [route]);
-  const center = lastPosition || stops[0] || ELURU_CENTER;
+  const center = lastPosition || stops[0] || PIET_COLLEGE || ELURU_CENTER;
 
   return (
     <section className="surface-card rounded-2xl p-4 shadow">
@@ -72,6 +79,9 @@ const DriverMap = ({ lastPosition, route, children }) => {
         {stops.map((stop) => (
           <Marker key={`${stop.lat}-${stop.lng}`} position={stop} icon={stopIcon} title={stop.name} />
         ))}
+        <Marker position={PIET_COLLEGE} icon={collegeIcon} title="College">
+          <Popup>College</Popup>
+        </Marker>
         {lastPosition && <Marker position={lastPosition} icon={driverIcon} title="You" />}
         <LiveViewport position={lastPosition} />
       </MapContainer>

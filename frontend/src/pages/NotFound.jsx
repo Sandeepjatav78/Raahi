@@ -12,7 +12,7 @@ const NotFound = () => {
         <div className="nf-logo-wrap">
           <img
             src="/logohorigental.svg"
-            alt="TrackMate"
+            alt="Raahi"
             className="nf-logo"
           />
         </div>
@@ -55,7 +55,7 @@ const NotFound = () => {
 
         {/* Footer */}
         <p className="nf-footer">
-          TrackMate &mdash; Smart Bus Tracking System
+          Raahi &mdash; Smart Bus Tracking System
         </p>
       </div>
     </main>

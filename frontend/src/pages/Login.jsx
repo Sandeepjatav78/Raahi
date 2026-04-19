@@ -9,6 +9,7 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -54,8 +55,6 @@ const Login = () => {
 
   const targetPath = useMemo(() => {
     if (!user) return null;
-    // Redirect to profile if first login to change password
-    if (user.firstLogin) return '/profile';
     if (user.role === 'admin') return '/admin';
     if (user.role === 'driver') return '/driver';
     if (user.role === 'student') return '/student';
@@ -73,11 +72,13 @@ const Login = () => {
         await api.post('/auth/register', {
           username,
           name,
+          phone,
           email
         });
         // Show success popup, switch to login mode
         setRegistrationSuccess(true);
         setName('');
+        setPhone('');
         setEmail('');
         // Keep username so user can log in easily
         setPassword('');
@@ -272,6 +273,25 @@ const Login = () => {
                   onChange={(e) => setName(e.target.value)}
                   required
                   autoComplete="name"
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+
+            {/* Phone Number (signup only) */}
+            {isSignUp && !registrationSuccess && (
+              <div className="login-field">
+                <label className="login-label">
+                  Phone Number <span className="text-blue-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  placeholder="Enter your phone number"
+                  className="login-input"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  autoComplete="tel"
                   disabled={isLoading}
                 />
               </div>

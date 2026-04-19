@@ -1,12 +1,12 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import TrackMateLoader from './TrackMateLoader';
+import RaahiLoader from './RaahiLoader';
 
 const ProtectedRoute = ({ children, roles }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <TrackMateLoader message="Authenticating..." />;
+    return <RaahiLoader message="Authenticating..." />;
   }
 
   if (!user) {

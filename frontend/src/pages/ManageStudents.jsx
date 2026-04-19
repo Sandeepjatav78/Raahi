@@ -7,7 +7,7 @@ import {
   Users, Plus, Search, Edit2, Trash2, Phone, 
   User, X, Bus, MapPin, CheckCircle, Clock
 } from 'lucide-react';
-import TrackMateLoader from '../components/TrackMateLoader';
+import RaahiLoader from '../components/RaahiLoader';
 
 const blankForm = { username: '', name: '', phone: '', email: '', busId: '', stopId: '' };
 
@@ -62,12 +62,10 @@ const StudentCard = ({ student, assignment, onEdit, onDelete }) => {
         </span>
       </div>
 
-      {student.phone && (
-        <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
-          <Phone className="w-4 h-4" />
-          <span>{student.phone}</span>
-        </div>
-      )}
+      <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+        <Phone className="w-4 h-4" />
+        <span>{student.phone || 'No phone number'}</span>
+      </div>
       
       {student.email && (
         <div className="flex items-center gap-2 text-sm text-slate-400 mb-3">
@@ -280,7 +278,7 @@ const ManageStudents = () => {
 
         {/* Students Grid */}
         {loading ? (
-          <TrackMateLoader compact message="Loading students..." />
+          <RaahiLoader compact message="Loading students..." />
         ) : filteredStudents.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredStudents.map((student) => (

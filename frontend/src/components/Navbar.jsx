@@ -196,7 +196,7 @@ const Navbar = () => {
               <div className="nav-drawer-logo">
                 <img
                   src="/logohorigental.svg"
-                  alt="TrackMate"
+                  alt="Raahi"
                   className="nav-logo-img"
                 />
               </div>

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'trackmate-v1';
+const CACHE_VERSION = 'raahi-v1';
 
 self.addEventListener('install', (event) => {
   // Activate new SW immediately
@@ -44,7 +44,7 @@ self.addEventListener('push', (event) => {
       url: data.url
     },
     // Adding tag allows coalescing multiple rapid updates into one
-    tag: data.tag || 'trackmate-update',
+    tag: data.tag || 'raahi-update',
     renotify: true,
     requireInteraction: true, // Keeps notification visible until clicked
     vibrate: data.tag === 'sos-alert' ? [500, 200, 500, 200, 500] : [200]

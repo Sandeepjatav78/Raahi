@@ -38,7 +38,7 @@ export const showPageNotification = async (title, options = {}) => {
 
   const payload = {
     ...options,
-    tag: options.tag || 'trackmate-alert',
+    tag: options.tag || 'raahi-alert',
     icon: options.icon || '/favicon.ico',
     badge: options.badge || '/favicon.ico'
   };

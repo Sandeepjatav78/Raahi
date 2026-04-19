@@ -23,15 +23,43 @@ import 'leaflet.pm';
 import 'leaflet.pm/dist/leaflet.pm.css';
 import '../styles/MapEditor.css';
 import { lineToGeoJSON, markerToStop, reorderStopsAlongLine, reindexStops } from '../utils/mapUtils';
-import { ELURU_CENTER, TILE_LAYER_ATTRIBUTION, TILE_LAYER_URL } from '../constants/geo';
+import { PIET_COLLEGE, TILE_LAYER_ATTRIBUTION, TILE_LAYER_URL } from '../constants/geo';
 
-const DEFAULT_CENTER = [ELURU_CENTER.lat, ELURU_CENTER.lng];
+const DEFAULT_CENTER = [PIET_COLLEGE.lat, PIET_COLLEGE.lng];
+const OSRM_ROUTE_URL = 'https://router.project-osrm.org/route/v1/driving';
+const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search';
+
+const createStopId = () =>
+  (typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `stop-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
 const stopIcon = new L.Icon({
   iconUrl: '/markers/stop.png',
   iconSize: [30, 30],
   iconAnchor: [15, 30],
   popupAnchor: [0, -30]
+});
+
+const startStopIcon = L.divIcon({
+  className: 'start-stop-pin',
+  html: '<div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(16,185,129,0.95);color:#fff;font-size:12px;font-weight:700;box-shadow:0 8px 18px rgba(16,185,129,0.45);border:2px solid rgba(255,255,255,0.9)">S</div>',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15]
+});
+
+const endStopIcon = L.divIcon({
+  className: 'end-stop-pin',
+  html: '<div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(239,68,68,0.95);color:#fff;font-size:12px;font-weight:700;box-shadow:0 8px 18px rgba(239,68,68,0.45);border:2px solid rgba(255,255,255,0.9)">E</div>',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15]
+});
+
+const collegeIcon = L.divIcon({
+  className: 'college-map-pin',
+  html: '<div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(14,165,233,0.9);color:#fff;font-size:18px;box-shadow:0 10px 24px rgba(14,165,233,0.35);border:2px solid rgba(255,255,255,0.85)">🏫</div>',
+  iconSize: [36, 36],
+  iconAnchor: [18, 18]
 });
 
 // Custom Stop Name Modal Component
@@ -176,7 +204,7 @@ const SortableStopRow = ({ stop, index, updateStopName, removeStop, moveStop }) 
   );
 };
 
-const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContainerRef }) => {
+const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContainerRef, saveButtonLabel = 'Continue to Review' }) => {
   const mapNode = useRef(null);
   const mapInstance = useRef(null);
   const polylineLayer = useRef(null);
@@ -185,6 +213,10 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
   const [stops, setStops] = useState(reindexStops(initialStops));
   const [nameEdits, setNameEdits] = useState({});
   const [error, setError] = useState('');
+  const [autoRouting, setAutoRouting] = useState(false);
+  const [cityRoute, setCityRoute] = useState({ from: '', via: '', to: '' });
+  const [autoBuildFromPins, setAutoBuildFromPins] = useState(true);
+  const [showAdvancedTools, setShowAdvancedTools] = useState(false);
   
   // Modal state for stop naming
   const [stopModal, setStopModal] = useState({ 
@@ -197,6 +229,39 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
 
   const sortedStops = useMemo(() => reindexStops(stops), [stops]);
 
+  const getStopIconByIndex = (index, total) => {
+    if (total <= 1) return startStopIcon;
+    if (index === 0) return startStopIcon;
+    if (index === total - 1) return endStopIcon;
+    return stopIcon;
+  };
+
+  const syncMarkerIcons = (orderedStops) => {
+    const total = orderedStops.length;
+    orderedStops.forEach((stop, index) => {
+      const marker = stopMarkers.current.get(stop.id);
+      if (marker) {
+        marker.setIcon(getStopIconByIndex(index, total));
+      }
+    });
+  };
+
+  const tryAutoBuildFromPins = async (nextStops) => {
+    if (!autoBuildFromPins) return;
+    if (routeGeom) return;
+    if (!Array.isArray(nextStops) || nextStops.length !== 2) return;
+
+    setAutoRouting(true);
+    try {
+      const coordinates = await fetchRoadRoute(nextStops);
+      drawRouteOnMap(coordinates);
+    } catch (routeError) {
+      setError(routeError.message || 'Unable to auto-generate route from start/end pins.');
+    } finally {
+      setAutoRouting(false);
+    }
+  };
+
   // Handle modal confirm for creating new stop
   const handleStopNameConfirm = (name) => {
     if (stopModal.mode === 'create' && stopModal.pendingLayer) {
@@ -205,7 +270,10 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
       layer.__stopId = stop.id;
       stopMarkers.current.set(stop.id, layer);
       attachMarkerHandlers(layer, stop.id);
-      setStops((prev) => reorderStopsAlongLine(routeGeom, [...prev, stop]));
+      const nextStops = reorderStopsAlongLine(routeGeom, [...stops, stop]);
+      setStops(nextStops);
+      syncMarkerIcons(nextStops);
+      tryAutoBuildFromPins(nextStops);
     } else if (stopModal.mode === 'edit' && stopModal.stopId) {
       const stopId = stopModal.stopId;
       setStops((prev) => prev.map((stop) => (stop.id === stopId ? { ...stop, name } : stop)));
@@ -230,11 +298,13 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
   const attachMarkerHandlers = (marker, stopId) => {
     marker.on('pm:dragend', () => {
       const { lat, lng } = marker.getLatLng();
-      setStops((prev) =>
-        reindexStops(
+      setStops((prev) => {
+        const nextStops = reindexStops(
           prev.map((stop) => (stop.id === stopId ? { ...stop, lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)) } : stop))
-        )
-      );
+        );
+        syncMarkerIcons(nextStops);
+        return nextStops;
+      });
     });
 
     marker.on('pm:remove', () => removeStop(stopId));
@@ -261,7 +331,11 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
       marker.removeFrom(mapInstance.current);
       stopMarkers.current.delete(stopId);
     }
-    setStops((prev) => reindexStops(prev.filter((stop) => stop.id !== stopId)));
+    setStops((prev) => {
+      const nextStops = reindexStops(prev.filter((stop) => stop.id !== stopId));
+      syncMarkerIcons(nextStops);
+      return nextStops;
+    });
   };
 
   const updateStopName = (stopId, name) => {
@@ -279,6 +353,132 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
     marker.addTo(mapInstance.current);
     stopMarkers.current.set(stop.id, marker);
     attachMarkerHandlers(marker, stop.id);
+  };
+
+  const rebuildStopsOnMap = (nextStops) => {
+    stopMarkers.current.forEach((marker) => marker.remove());
+    stopMarkers.current.clear();
+    nextStops.forEach(addMarkerLayer);
+    const orderedStops = reindexStops(nextStops, { sort: false });
+    setStops(orderedStops);
+    syncMarkerIcons(orderedStops);
+  };
+
+  const drawRouteOnMap = (coordinates) => {
+    if (!mapInstance.current) return;
+    if (polylineLayer.current) {
+      polylineLayer.current.remove();
+      polylineLayer.current = null;
+    }
+    const latLngs = coordinates.map(([lng, lat]) => [lat, lng]);
+    const layer = L.polyline(latLngs, {
+      color: '#6366f1',
+      weight: 4
+    }).addTo(mapInstance.current);
+    layer.pm.enable();
+    handlePolylineUpdate(layer);
+    mapInstance.current.fitBounds(layer.getBounds(), { padding: [24, 24] });
+  };
+
+  const fetchRoadRoute = async (inputStops) => {
+    const waypoints = inputStops
+      .filter((stop) => Number.isFinite(stop?.lat) && Number.isFinite(stop?.lng))
+      .map((stop) => `${stop.lng},${stop.lat}`)
+      .join(';');
+
+    if (!waypoints || inputStops.length < 2) {
+      throw new Error('Add at least two valid stops to auto-generate route.');
+    }
+
+    const response = await fetch(
+      `${OSRM_ROUTE_URL}/${waypoints}?overview=full&geometries=geojson&steps=false&alternatives=false`
+    );
+
+    if (!response.ok) {
+      throw new Error('Auto route service is currently unavailable.');
+    }
+
+    const data = await response.json();
+    const coordinates = data?.routes?.[0]?.geometry?.coordinates;
+    if (!Array.isArray(coordinates) || coordinates.length < 2) {
+      throw new Error('Could not generate route for the selected stops.');
+    }
+    return coordinates;
+  };
+
+  const geocodePlace = async (query) => {
+    const response = await fetch(
+      `${NOMINATIM_SEARCH_URL}?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Could not find location for "${query}".`);
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data) || !data[0]) {
+      throw new Error(`Location not found: "${query}".`);
+    }
+
+    return {
+      lat: Number(data[0].lat),
+      lng: Number(data[0].lon),
+      name: data[0].display_name?.split(',')?.[0] || query
+    };
+  };
+
+  const handleAutoRouteFromStops = async () => {
+    setError('');
+    if (sortedStops.length < 2) {
+      setError('Add at least two stops, then tap Auto Route.');
+      return;
+    }
+
+    setAutoRouting(true);
+    try {
+      const coordinates = await fetchRoadRoute(sortedStops);
+      drawRouteOnMap(coordinates);
+    } catch (routeError) {
+      setError(routeError.message || 'Unable to auto-generate route.');
+    } finally {
+      setAutoRouting(false);
+    }
+  };
+
+  const handleAutoRouteFromCities = async () => {
+    setError('');
+    const from = cityRoute.from.trim();
+    const to = cityRoute.to.trim();
+    const viaStops = cityRoute.via
+      .split(',')
+      .map((place) => place.trim())
+      .filter(Boolean);
+
+    if (!from || !to) {
+      setError('Enter both start and destination (e.g. Panipat -> Kurukshetra).');
+      return;
+    }
+
+    setAutoRouting(true);
+    try {
+      const queries = [from, ...viaStops, to];
+      const resolvedPlaces = await Promise.all(queries.map((query) => geocodePlace(query)));
+      const nextStops = resolvedPlaces.map((place, index) => ({
+        id: createStopId(),
+        name: place.name,
+        lat: place.lat,
+        lng: place.lng,
+        seq: index
+      }));
+
+      rebuildStopsOnMap(nextStops);
+      const coordinates = await fetchRoadRoute(nextStops);
+      drawRouteOnMap(coordinates);
+    } catch (routeError) {
+      setError(routeError.message || 'Unable to create route from city names.');
+    } finally {
+      setAutoRouting(false);
+    }
   };
 
   const handlePolylineUpdate = (layer) => {
@@ -322,7 +522,9 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
         id: stop.id || stop._id || `stop-${index}-${stop.seq ?? ''}`
       }));
       normalizedStops.forEach(addMarkerLayer);
-      setStops(reindexStops(normalizedStops));
+      const orderedStops = reindexStops(normalizedStops);
+      setStops(orderedStops);
+      syncMarkerIcons(orderedStops);
     }
   };
 
@@ -333,6 +535,10 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
     L.tileLayer(TILE_LAYER_URL, {
       attribution: TILE_LAYER_ATTRIBUTION
     }).addTo(mapInstance.current);
+
+    L.marker([PIET_COLLEGE.lat, PIET_COLLEGE.lng], { icon: collegeIcon })
+      .addTo(mapInstance.current)
+      .bindPopup('College');
 
     mapInstance.current.pm.addControls({
       position: 'topleft',
@@ -408,6 +614,7 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
     setRouteGeom(null);
     setStops([]);
     setError('');
+    setCityRoute({ from: '', via: '', to: '' });
   };
 
   const moveStop = (idx, direction) => {
@@ -418,7 +625,9 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
     const reordered = [...sortedStops];
     const [removed] = reordered.splice(idx, 1);
     reordered.splice(nextIdx, 0, removed);
-    setStops(reindexStops(reordered, { sort: false }));
+    const orderedStops = reindexStops(reordered, { sort: false });
+    setStops(orderedStops);
+    syncMarkerIcons(orderedStops);
   };
 
   const sensors = useSensors(
@@ -451,7 +660,9 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
           setRouteGeom(lineToGeoJSON(newPolyline));
         }
 
-        return reindexStops(newStops, { sort: false });
+        const orderedStops = reindexStops(newStops, { sort: false });
+        syncMarkerIcons(orderedStops);
+        return orderedStops;
       });
     }
   };
@@ -471,15 +682,93 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
         </div>
       </div>
 
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+        <p className="text-[11px] uppercase tracking-wider text-emerald-200">Simple Setup</p>
+        <div className="mt-2 space-y-1.5 text-xs text-emerald-100/90">
+          <p>{routeGeom ? '1. Route line: done' : '1. Draw route line from left toolbar'}</p>
+          <p>{sortedStops.length >= 2 ? `2. Stops added: ${sortedStops.length}` : '2. Add at least 2 stops with marker tool'}</p>
+          <p>3. Click "{saveButtonLabel}"</p>
+        </div>
+      </div>
+
       {/* Action Buttons */}
-      <div className="flex gap-2">
+      <div className="space-y-2">
+        <div className="rounded-xl border border-white/10 bg-slate-800/40 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] uppercase tracking-wider text-slate-400">Advanced Tools</p>
+            <button
+              type="button"
+              className="rounded-md border border-white/15 px-2 py-1 text-[11px] font-medium text-slate-300 hover:bg-slate-700/60"
+              onClick={() => setShowAdvancedTools((prev) => !prev)}
+            >
+              {showAdvancedTools ? 'Hide' : 'Show'}
+            </button>
+          </div>
+
+          {showAdvancedTools && (
+            <>
+              <p className="text-[11px] text-slate-400">Auto route by city names (optional)</p>
+              <label className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
+                <span>Auto-build on 2 pins (start + end)</span>
+                <input
+                  type="checkbox"
+                  checked={autoBuildFromPins}
+                  onChange={(e) => setAutoBuildFromPins(e.target.checked)}
+                  className="h-4 w-4 accent-cyan-500"
+                />
+              </label>
+              <div className="grid grid-cols-1 gap-2">
+                <input
+                  type="text"
+                  value={cityRoute.from}
+                  onChange={(e) => setCityRoute((prev) => ({ ...prev, from: e.target.value }))}
+                  placeholder="From (e.g. Panipat)"
+                  className="w-full rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500/50"
+                />
+                <input
+                  type="text"
+                  value={cityRoute.via}
+                  onChange={(e) => setCityRoute((prev) => ({ ...prev, via: e.target.value }))}
+                  placeholder="Via (optional, comma-separated)"
+                  className="w-full rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500/50"
+                />
+                <input
+                  type="text"
+                  value={cityRoute.to}
+                  onChange={(e) => setCityRoute((prev) => ({ ...prev, to: e.target.value }))}
+                  placeholder="To (e.g. Kurukshetra)"
+                  className="w-full rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500/50"
+                />
+              </div>
+              <button
+                type="button"
+                className="w-full rounded-lg border border-cyan-400/30 bg-cyan-500/15 px-3 py-2 text-sm font-medium text-cyan-200 hover:bg-cyan-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleAutoRouteFromCities}
+                disabled={autoRouting}
+              >
+                {autoRouting ? 'Generating Route...' : 'Auto Route by City Names'}
+              </button>
+            </>
+          )}
+        </div>
+
         <button
           type="button"
-          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:shadow-indigo-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:shadow-indigo-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleSave}
-          disabled={sortedStops.length < 2}
+          disabled={sortedStops.length < 2 || autoRouting}
         >
-          Save Route
+          {saveButtonLabel}
+        </button>
+
+        <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          className="flex items-center justify-center gap-2 rounded-xl bg-slate-800/80 px-4 py-2.5 text-sm font-medium text-slate-300 border border-white/10 transition hover:bg-slate-700/80 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleAutoRouteFromStops}
+          disabled={sortedStops.length < 2 || autoRouting}
+        >
+          {autoRouting ? 'Generating...' : 'Auto Draw Route'}
         </button>
         <button
           type="button"
@@ -499,16 +788,24 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
               return manualReindex;
             });
           }}
-          disabled={sortedStops.length < 2}
+          disabled={sortedStops.length < 2 || autoRouting}
         >
-          ↕️ Reverse
+          Reverse Stops
         </button>
+        <button
+          type="button"
+          className="flex items-center justify-center gap-2 rounded-xl bg-slate-800/80 px-4 py-2.5 text-sm font-medium text-slate-300 border border-white/10 transition hover:bg-slate-700/80 hover:text-white"
+          onClick={handleClear}
+        >
+          Reset Map
+        </button>
+        </div>
       </div>
 
       {/* Help Text */}
       <p className="text-xs text-slate-500 flex items-center gap-1.5">
         <GripVertical size={12} className="text-slate-400" />
-        Drag to reorder • Click map to add stops
+        Simple flow: draw line -> add stops -> continue. Use advanced tools only if needed.
       </p>
 
       {/* Error Message */}

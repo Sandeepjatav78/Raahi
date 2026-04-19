@@ -10,13 +10,31 @@ import { useSocket } from '../hooks/useSocket';
 import { api } from '../utils/api';
 import { formatETA, computeFallbackETA } from '../utils/etaUtils';
 import { useAuth } from '../hooks/useAuth';
-import TrackMateLoader from '../components/TrackMateLoader';
+import RaahiLoader from '../components/RaahiLoader';
+import { PIET_COLLEGE, PIET_COLLEGE_NAME, PIET_COLLEGE_MAP_URL } from '../constants/geo';
 
 const TOKEN_KEY = 'tm_token';
 const NOTIFICATION_PREF_KEY = 'tm_student_notifications';
 const EVENTS_STORAGE_KEY = 'tm_student_events';
 const DEPARTED_STORAGE_KEY = 'tm_student_departed';
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BDXVEVzz8rwtAK895AB89T--U1VMZ6FvyLQLF7em-fp3tQTDih-cT5ONqt_4qG88i8iBdRHdzavUvVvk7nQOOH8';
+const PICKUP_MATCH_RADIUS_METERS = 120;
+
+const toRadians = (degrees) => (degrees * Math.PI) / 180;
+
+const distanceMetersBetween = (pointA, pointB) => {
+  if (!pointA || !pointB) return null;
+  const earthRadiusM = 6371000;
+  const lat1 = toRadians(pointA.lat);
+  const lat2 = toRadians(pointB.lat);
+  const deltaLat = toRadians(pointB.lat - pointA.lat);
+  const deltaLng = toRadians(pointB.lng - pointA.lng);
+  const a =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusM * c;
+};
 
 const urlBase64ToUint8Array = (base64String) => {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -119,6 +137,7 @@ const StudentDashboard = () => {
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
   const [showSettings, setShowSettings] = useState(false);
+  const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
   const [preferences, setPreferences] = useState({
     enabled: true,
     proximityMinutes: 5,
@@ -146,6 +165,13 @@ const StudentDashboard = () => {
   if (typeof previousTripIdRef.current === 'function') {
     previousTripIdRef.current = previousTripIdRef.current();
   }
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentHour(new Date().getHours());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Socket handlers
   const handleLocationUpdate = useCallback((payload) => {
@@ -388,17 +414,47 @@ const StudentDashboard = () => {
 
   const speakStatus = () => {
     if (!('speechSynthesis' in window)) return;
-    const etaText = eta?.value ? formatETA(eta.value) : 'unknown';
-    const text = `Your bus will arrive at ${stopInfo?.name || 'your stop'} in approximately ${etaText}`;
+    const etaText = activeEtaMs ? formatETA(activeEtaMs) : 'unknown';
+    const text = destinationEtaMs
+      ? `Bus pickup completed. Estimated time to ${activeEtaTargetLabel} is ${etaText}`
+      : `Your bus will arrive at ${activeEtaTargetLabel} in approximately ${etaText}`;
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
   };
 
-  const formattedEta = eta?.value ? formatETA(eta.value) : '—';
   const stopPosition = stopInfo ? normalizeLocation(stopInfo) : null;
+  const collegePosition = PIET_COLLEGE;
+  const isMorningCommute = currentHour < 12;
+  const pickupPoint = isMorningCommute ? stopPosition : collegePosition;
+  const dropPoint = isMorningCommute ? collegePosition : stopPosition;
+  const pickupEtaMs = useMemo(() => {
+    if (isMorningCommute) return eta?.value || null;
+    if (!busPosition || !collegePosition) return null;
+    return computeFallbackETA(busPosition, collegePosition, busSpeed || 5);
+  }, [isMorningCommute, eta?.value, busPosition, collegePosition, busSpeed]);
+  const pickupEtaText = pickupEtaMs ? formatETA(pickupEtaMs) : '—';
+  const pickupLabel = isMorningCommute ? (stopInfo?.name || 'your stop') : PIET_COLLEGE_NAME;
+  const dropLabel = isMorningCommute ? PIET_COLLEGE_NAME : (stopInfo?.name || 'your stop');
+
+  const isBusAtPickupPoint = useMemo(() => {
+    if (!busPosition || !pickupPoint) return false;
+    const meters = distanceMetersBetween(busPosition, pickupPoint);
+    return typeof meters === 'number' && meters <= PICKUP_MATCH_RADIUS_METERS;
+  }, [busPosition, pickupPoint]);
+
+  const destinationEtaMs = useMemo(() => {
+    if (!isBusAtPickupPoint || !busPosition || !dropPoint) return null;
+    return computeFallbackETA(busPosition, dropPoint, busSpeed || 5);
+  }, [isBusAtPickupPoint, busPosition, dropPoint, busSpeed]);
+
+  const activeEtaMs = destinationEtaMs ?? eta?.value ?? null;
+  const activeEtaText = activeEtaMs ? formatETA(activeEtaMs) : '—';
+  const activeEtaTargetLabel = destinationEtaMs
+    ? (isMorningCommute ? PIET_COLLEGE_NAME : (stopInfo?.name || 'your stop'))
+    : (stopInfo?.name || 'your stop');
 
   // Loading state
   if (loading) {
-    return <TrackMateLoader message="Loading your dashboard..." />;
+    return <RaahiLoader message="Loading your dashboard..." />;
   }
 
   // Error state
@@ -516,6 +572,50 @@ const StudentDashboard = () => {
           </div>
         </header>
 
+        {/* Commute Direction */}
+        <div className="sd-card sd-card-animate" style={{ animationDelay: '0.03s' }}>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Today's commute</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">
+                {isMorningCommute ? 'Morning pickup from your stop' : 'Evening pickup from college'}
+              </h2>
+              <p className="mt-2 text-sm text-slate-400">
+                {isMorningCommute
+                  ? 'Pickup point: your stop. Drop point: college.'
+                  : 'Pickup point: college. Drop point: your stop.'}
+              </p>
+            </div>
+            <a
+              href={PIET_COLLEGE_MAP_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-medium text-white hover:bg-white/20 transition"
+            >
+              <MapPin className="w-4 h-4" />
+              Open College Map
+            </a>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-3xl bg-slate-900/60 p-4 border border-white/10">
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Pickup point</p>
+              <p className="mt-2 text-sm font-semibold text-white">{pickupLabel}</p>
+              <p className="mt-1 text-xs text-slate-400">ETA: {pickupEtaText}</p>
+            </div>
+            <div className="rounded-3xl bg-slate-900/60 p-4 border border-white/10">
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Drop point</p>
+              <p className="mt-2 text-sm font-semibold text-white">{dropLabel}</p>
+              <p className="mt-1 text-xs text-slate-400">Direction: {isMorningCommute ? 'Stop → College' : 'College → Stop'}</p>
+            </div>
+            <div className="rounded-3xl bg-slate-900/60 p-4 border border-white/10">
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">College</p>
+              <p className="mt-2 text-sm font-semibold text-white">{PIET_COLLEGE_NAME}</p>
+              <p className="mt-1 text-xs text-slate-400">Fixed campus destination</p>
+            </div>
+          </div>
+        </div>
+
         {/* ETA Hero Card — always full width */}
         <div className="sd-hero sd-card-animate" style={{ animationDelay: '0.06s' }}>
           <div className="sd-hero-glow" />
@@ -564,11 +664,20 @@ const StudentDashboard = () => {
               </>
             ) : (
               <>
-                <p className="sd-hero-subtitle" style={{ marginBottom: '0.25rem' }}>Estimated Arrival</p>
-                <p className="sd-eta-value">{formattedEta}</p>
-                <p className="sd-hero-subtitle">
-                  to <span className="sd-accent-text font-medium">{stopInfo?.name || 'your stop'}</span>
+                <p className="sd-hero-subtitle" style={{ marginBottom: '0.25rem' }}>
+                  {destinationEtaMs ? 'Pickup Complete • Destination ETA' : 'Estimated Arrival'}
                 </p>
+                <p className="sd-eta-value">{activeEtaText}</p>
+                <p className="sd-hero-subtitle">
+                  to <span className="sd-accent-text font-medium">{activeEtaTargetLabel}</span>
+                </p>
+                {destinationEtaMs && (
+                  <p className="sd-hero-footer-note" style={{ marginBottom: '0.65rem' }}>
+                    {isMorningCommute
+                      ? 'Morning mode: bus reached your stop, now showing ETA to college.'
+                      : 'Evening mode: bus reached college, now showing ETA to your drop stop.'}
+                  </p>
+                )}
                 <div className="sd-progress-wrap">
                   <span className="sd-progress-label">Progress:</span>
                   <div className="sd-progress-track">
@@ -590,7 +699,7 @@ const StudentDashboard = () => {
           <div className="sd-col-main">
             <div className="sd-map-wrap sd-card-animate" style={{ animationDelay: '0.12s' }}>
               <div className="sd-map-inner">
-                <StudentMap busPosition={busPosition} stopPosition={stopPosition} />
+                <StudentMap busPosition={busPosition} stopPosition={stopPosition} collegePosition={collegePosition} />
               </div>
             </div>
 

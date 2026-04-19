@@ -9,7 +9,7 @@ const connectDB = async () => {
   }
 
   const uri = process.env.MONGO_URI;
-  const dbName = process.env.DB_NAME || 'TrackMatev1';
+  const dbName = process.env.DB_NAME || 'RaahiV1';
 
   if (!uri) {
     throw new Error('MONGO_URI is not defined in the environment variables');

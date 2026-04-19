@@ -320,6 +320,7 @@ const ManageRoutes = () => {
               initialStops={initialStops}
               onSave={handleMoveToReview}
               panelContainerRef={panelRef}
+              saveButtonLabel="Continue to Review"
             />
 
             {saving && (
@@ -343,15 +344,15 @@ const ManageRoutes = () => {
               <div className="rw-sidebar-instructions">
                 <div className="rw-instruction">
                   <div className="rw-instruction-num">1</div>
-                  <p>Use the <strong>polyline tool</strong> to draw the bus route path</p>
+                  <p>Draw the route line using <strong>polyline tool</strong> from map toolbar</p>
                 </div>
                 <div className="rw-instruction">
                   <div className="rw-instruction-num">2</div>
-                  <p>Use the <strong>marker tool</strong> to place stops along the route</p>
+                  <p>Add minimum <strong>2 stops</strong> using marker tool on route</p>
                 </div>
                 <div className="rw-instruction">
                   <div className="rw-instruction-num">3</div>
-                  <p>Click <strong>Save Route</strong> below to review & confirm</p>
+                  <p>Click <strong>Continue to Review</strong> to confirm and save</p>
                 </div>
               </div>
 

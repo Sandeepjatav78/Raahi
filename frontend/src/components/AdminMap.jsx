@@ -2,6 +2,7 @@ import { useMemo, useEffect, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { PIET_COLLEGE } from '../constants/geo';
 
 const busIcon = new L.Icon({
     iconUrl: '/markers/bus.png',
@@ -18,14 +19,22 @@ const sosIcon = new L.Icon({
     className: 'animate-pulse'
 });
 
+const collegeIcon = L.divIcon({
+    className: 'college-map-pin',
+    html: '<div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(14,165,233,0.9);color:#fff;font-size:18px;box-shadow:0 10px 24px rgba(14,165,233,0.35);border:2px solid rgba(255,255,255,0.85)">🏫</div>',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18]
+});
+
 // Auto-fit bounds when buses change
 const FitBounds = ({ buses }) => {
     const map = useMap();
 
     useEffect(() => {
-        if (buses.length === 0) return;
+        const points = [...buses, PIET_COLLEGE].filter((point) => point?.lat && point?.lng);
+        if (points.length === 0) return;
 
-        const bounds = buses
+        const bounds = points
             .filter(b => b.lat && b.lng)
             .map(b => [b.lat, b.lng]);
 
@@ -52,7 +61,7 @@ const AdminMap = ({ buses = [], sosTrips = [], onBusClick }) => {
 
     return (
         <MapContainer
-            center={activeBuses[0]?.lastPosition || defaultCenter}
+            center={activeBuses[0]?.lastPosition || PIET_COLLEGE || defaultCenter}
             zoom={12}
             style={{ height: '100%', width: '100%', minHeight: '300px' }}
         >
@@ -62,6 +71,15 @@ const AdminMap = ({ buses = [], sosTrips = [], onBusClick }) => {
             />
 
             <FitBounds buses={activeBuses.map(b => b.lastPosition)} />
+
+            <Marker position={PIET_COLLEGE} icon={collegeIcon}>
+                <Popup>
+                    <div className="min-w-[150px]">
+                        <p className="font-bold text-sm">College</p>
+                        <p className="text-xs text-gray-600">P.I.E.T - Panipat Institute of Engineering &amp; Technology</p>
+                    </div>
+                </Popup>
+            </Marker>
 
             {activeBuses.map(bus => {
                 const isSOS = sosSet.has(bus.tripId);

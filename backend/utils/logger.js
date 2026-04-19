@@ -1,5 +1,5 @@
 /**
- * Simple logger utility for TrackMate backend
+ * Simple logger utility for Raahi backend
  * Provides consistent logging with environment awareness
  */
 

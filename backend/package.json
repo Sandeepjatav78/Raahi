@@ -1,7 +1,7 @@
 {
-  "name": "trackmate-backend",
+  "name": "raahi-backend",
   "version": "1.0.0",
-  "description": "TrackMate realtime school bus tracking backend",
+  "description": "Raahi realtime school bus tracking backend",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

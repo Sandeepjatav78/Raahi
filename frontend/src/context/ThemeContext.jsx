@@ -6,19 +6,20 @@ export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
     // Check localStorage first, default to 'dark'
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('trackmate-theme') || 'dark';
+      return localStorage.getItem('raahi-theme') || 'dark';
     }
     return 'dark';
   });
 
   useEffect(() => {
     // Save to localStorage
-    localStorage.setItem('trackmate-theme', theme);
+    localStorage.setItem('raahi-theme', theme);
     
     // Apply theme to document using data-theme attribute
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(theme);
+    document.documentElement.style.colorScheme = theme;
   }, [theme]);
 
   const toggleTheme = () => {

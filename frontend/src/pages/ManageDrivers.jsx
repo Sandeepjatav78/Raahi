@@ -7,7 +7,7 @@ import {
   UserCheck, Plus, Search, Edit2, Trash2, Phone, 
   User, X, Bus, Shield
 } from 'lucide-react';
-import TrackMateLoader from '../components/TrackMateLoader';
+import RaahiLoader from '../components/RaahiLoader';
 
 const blankForm = { username: '', password: '', name: '', phone: '', photoUrl: '' };
 
@@ -252,7 +252,7 @@ const ManageDrivers = () => {
 
         {/* Drivers Grid */}
         {loading ? (
-          <TrackMateLoader compact message="Loading drivers..." />
+          <RaahiLoader compact message="Loading drivers..." />
         ) : filteredDrivers.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredDrivers.map((driver) => (

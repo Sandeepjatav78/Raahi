@@ -7,7 +7,7 @@ let pushEnabled = false;
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
     try {
         webpush.setVapidDetails(
-            process.env.VAPID_EMAIL || 'mailto:admin@trackmate.com',
+            process.env.VAPID_EMAIL || 'mailto:admin@raahi.com',
             VAPID_PUBLIC_KEY,
             VAPID_PRIVATE_KEY
         );
@@ -91,7 +91,7 @@ const testPush = async (req, res) => {
         console.log('Sending Test Push to:', user.name);
         try {
             await webpush.sendNotification(user.pushSubscription, JSON.stringify({
-                title: '🔔 TrackMate',
+                title: '🔔 Raahi',
                 body: 'Push notifications are working! You\'ll get alerts when your bus is nearby.',
                 url: '/student',
                 tag: 'test-push',

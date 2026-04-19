@@ -23,7 +23,7 @@ module.exports = {
   DEFAULT_STALE_TRIP_HOURS,
   STALE_TRIP_HOURS: parseInt(process.env.STALE_TRIP_HOURS || String(DEFAULT_STALE_TRIP_HOURS), 10),
   // In development, use fallback. In production, require env var (validated above)
-  JWT_SECRET: process.env.JWT_SECRET || (process.env.NODE_ENV !== 'production' ? 'trackmate_dev_secret_change_in_prod' : ''),
+  JWT_SECRET: process.env.JWT_SECRET || (process.env.NODE_ENV !== 'production' ? 'raahi_dev_secret_change_in_prod' : ''),
   OSRM_BASE_URL: process.env.OSRM_BASE_URL || 'http://router.project-osrm.org',
   OSRM_CACHE_TTL_MS: 15000, // 15 seconds for responsive ETAs
   // VAPID keys - generate with: npx web-push generate-vapid-keys

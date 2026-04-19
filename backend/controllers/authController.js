@@ -181,6 +181,7 @@ const registerUser = async (req, res) => {
   try {
     const username = typeof req.body.username === 'string' ? req.body.username.trim().toUpperCase() : '';
     const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    const phone = typeof req.body.phone === 'string' ? req.body.phone.trim() : '';
     const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     const photoUrl = typeof req.body.photoUrl === 'string' ? req.body.photoUrl.trim() : null;
 
@@ -192,6 +193,9 @@ const registerUser = async (req, res) => {
     }
     if (!name) {
       return res.status(400).json({ message: 'Full name is required' });
+    }
+    if (!phone) {
+      return res.status(400).json({ message: 'Phone number is required' });
     }
 
     // Check if username already exists (case-insensitive — roll numbers may vary in case)
@@ -215,6 +219,7 @@ const registerUser = async (req, res) => {
       password: hashedPassword,
       role: 'student',
       name,
+      phone,
       email,
       photoUrl: photoUrl || null,
       firstLogin: true // Force password change on first login

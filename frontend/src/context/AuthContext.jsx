@@ -74,10 +74,7 @@ export const AuthProvider = ({ children }) => {
     async ({ username, password }) => {
       const { data } = await api.post('/auth/login', { username, password });
       persistSession(data.token, data.user);
-      // Redirect to profile on first login so user changes default password
-      const destination = data.user.firstLogin
-        ? '/profile'
-        : (roleRedirect[data.user.role] || '/login');
+      const destination = roleRedirect[data.user.role] || '/login';
       navigate(destination, { replace: true });
       return data.user;
     },

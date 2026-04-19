@@ -27,11 +27,18 @@ const stopIcon = createIcon(STOP_ICON_URL, {
   iconAnchor: [15, 30]
 });
 
-const FitBounds = ({ busPosition, stopPosition }) => {
+const collegeIcon = L.divIcon({
+  className: 'college-map-pin',
+  html: '<div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(14,165,233,0.9);color:#fff;font-size:18px;box-shadow:0 10px 24px rgba(14,165,233,0.35);border:2px solid rgba(255,255,255,0.85)">🏫</div>',
+  iconSize: [36, 36],
+  iconAnchor: [18, 18]
+});
+
+const FitBounds = ({ busPosition, stopPosition, collegePosition }) => {
   const map = useMap();
   useEffect(() => {
     if (!map) return;
-    const targets = [busPosition, stopPosition].filter(Boolean);
+    const targets = [busPosition, stopPosition, collegePosition].filter(Boolean);
     if (!targets.length) return;
     if (targets.length === 1) {
       map.setView(targets[0], 15, { animate: true });
@@ -39,7 +46,7 @@ const FitBounds = ({ busPosition, stopPosition }) => {
     }
     const bounds = L.latLngBounds(targets.map((point) => [point.lat, point.lng]));
     map.fitBounds(bounds.pad(0.25), { animate: true });
-  }, [busPosition, stopPosition, map]);
+  }, [busPosition, stopPosition, collegePosition, map]);
   return null;
 };
 
@@ -55,8 +62,8 @@ const AnimatedMarker = ({ position, icon, popupText }) => {
   return <Marker ref={markerRef} position={position} icon={icon} title={popupText} />;
 };
 
-const StudentMap = ({ busPosition, stopPosition }) => {
-  const center = useMemo(() => busPosition || stopPosition || DEFAULT_CENTER, [busPosition, stopPosition]);
+const StudentMap = ({ busPosition, stopPosition, collegePosition }) => {
+  const center = useMemo(() => busPosition || stopPosition || collegePosition || DEFAULT_CENTER, [busPosition, stopPosition, collegePosition]);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -70,7 +77,8 @@ const StudentMap = ({ busPosition, stopPosition }) => {
         <TileLayer url={TILE_LAYER_URL} attribution={TILE_LAYER_ATTRIBUTION} />
         <AnimatedMarker position={busPosition} icon={busIcon} popupText="Bus" />
         <AnimatedMarker position={stopPosition} icon={stopIcon} popupText="Your stop" />
-        <FitBounds busPosition={busPosition} stopPosition={stopPosition} />
+        <AnimatedMarker position={collegePosition} icon={collegeIcon} popupText="College" />
+        <FitBounds busPosition={busPosition} stopPosition={stopPosition} collegePosition={collegePosition} />
       </MapContainer>
     </section>
   );

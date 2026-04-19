@@ -8,7 +8,7 @@ import {
   AlertTriangle, RefreshCw, Trash2, ChevronRight, Activity, Octagon, Map, Download
 } from 'lucide-react';
 import AdminMap from '../components/AdminMap';
-import TrackMateLoader from '../components/TrackMateLoader';
+import RaahiLoader from '../components/RaahiLoader';
 
 // ===== COMPONENTS =====
 
@@ -167,7 +167,7 @@ const AdminDashboard = () => {
 
   // Loading
   if (loading) {
-    return <TrackMateLoader message="Loading dashboard..." />;
+    return <RaahiLoader message="Loading dashboard..." />;
   }
 
   // Error
