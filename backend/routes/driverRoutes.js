@@ -8,7 +8,8 @@ const {
   endTrip,
   markApproaching,
   getDriverActiveTrip,
-  getDriverAssignedBus
+  getDriverAssignedBus,
+  getNearbyEmergencyServices
 } = require('../controllers/driverController');
 
 const router = express.Router();
@@ -22,5 +23,6 @@ router.post('/trips/location', shareLocation);
 router.post('/trips/event', recordStopEvent);
 router.post('/trips/end', endTrip);
 router.post('/approaching', markApproaching);
+router.get('/emergency-services', getNearbyEmergencyServices);
 
 module.exports = router;

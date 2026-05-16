@@ -282,6 +282,133 @@ const getTripAnalytics = async (req, res) => {
   }
 };
 
+const getAttendanceQrCatalog = async (_req, res) => {
+  try {
+    const [routes, buses] = await Promise.all([
+      require('../models/Route').find().select('name').lean(),
+      Bus.find({ isActive: true })
+        .populate('route', 'name')
+        .select('name numberPlate route isActive')
+        .lean()
+    ]);
+
+    const busesByRoute = new Map();
+    buses.forEach((bus) => {
+      const routeId = bus.route?._id ? String(bus.route._id) : 'unassigned';
+      if (!busesByRoute.has(routeId)) busesByRoute.set(routeId, []);
+      busesByRoute.get(routeId).push({
+        _id: bus._id,
+        name: bus.name,
+        numberPlate: bus.numberPlate,
+        routeId: bus.route?._id || null,
+        routeName: bus.route?.name || 'Unassigned route'
+      });
+    });
+
+    const routeCatalog = routes
+      .map((route) => ({
+        _id: route._id,
+        name: route.name,
+        buses: (busesByRoute.get(String(route._id)) || []).sort((a, b) => a.name.localeCompare(b.name))
+      }))
+      .filter((route) => route.buses.length > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const unassigned = busesByRoute.get('unassigned') || [];
+    if (unassigned.length > 0) {
+      routeCatalog.push({
+        _id: null,
+        name: 'Unassigned route',
+        buses: unassigned.sort((a, b) => a.name.localeCompare(b.name))
+      });
+    }
+
+    res.json(routeCatalog);
+  } catch (error) {
+    console.error('getAttendanceQrCatalog error:', error);
+    res.status(500).json({ message: 'Failed to fetch attendance QR catalog', error: error.message });
+  }
+};
+
+const buildAttendanceQrPayload = (busDoc) => {
+  const routeId = busDoc.route?._id ? String(busDoc.route._id) : 'na';
+  const busId = String(busDoc._id);
+  const numberPlate = busDoc.numberPlate || 'NA';
+  // Text payload is intentionally simple so generic QR scanners can return plain text.
+  return `RAAHI|${busId}|${routeId}|${numberPlate}`;
+};
+
+const generateAttendanceQr = async (req, res) => {
+  try {
+    const { busId } = req.body;
+    if (!busId) {
+      return res.status(400).json({ message: 'busId is required' });
+    }
+
+    const bus = await Bus.findById(busId)
+      .populate('route', 'name')
+      .select('name numberPlate route isActive')
+      .lean();
+
+    if (!bus) {
+      return res.status(404).json({ message: 'Bus not found' });
+    }
+
+    const qrCode = buildAttendanceQrPayload(bus);
+    res.json({
+      qrCode,
+      bus: {
+        _id: bus._id,
+        name: bus.name,
+        numberPlate: bus.numberPlate
+      },
+      route: {
+        _id: bus.route?._id || null,
+        name: bus.route?.name || 'Unassigned route'
+      }
+    });
+  } catch (error) {
+    console.error('generateAttendanceQr error:', error);
+    res.status(500).json({ message: 'Failed to generate attendance QR', error: error.message });
+  }
+};
+
+const generateAttendanceQrByRoute = async (req, res) => {
+  try {
+    const { routeId } = req.params;
+    const busQuery = routeId === 'unassigned' ? { route: null, isActive: true } : { route: routeId, isActive: true };
+
+    const buses = await Bus.find(busQuery)
+      .populate('route', 'name')
+      .select('name numberPlate route isActive')
+      .lean();
+
+    if (buses.length === 0) {
+      return res.status(404).json({ message: 'No active buses found for selected route' });
+    }
+
+    const qrList = buses
+      .map((bus) => ({
+        bus: {
+          _id: bus._id,
+          name: bus.name,
+          numberPlate: bus.numberPlate
+        },
+        route: {
+          _id: bus.route?._id || null,
+          name: bus.route?.name || 'Unassigned route'
+        },
+        qrCode: buildAttendanceQrPayload(bus)
+      }))
+      .sort((a, b) => a.bus.name.localeCompare(b.bus.name));
+
+    res.json(qrList);
+  } catch (error) {
+    console.error('generateAttendanceQrByRoute error:', error);
+    res.status(500).json({ message: 'Failed to generate route attendance QR', error: error.message });
+  }
+};
+
 const exportTripsCSV = async (req, res) => {
   try {
     // Support token in query param for direct browser downloads
@@ -371,5 +498,8 @@ module.exports = {
   clearEvents,
   getLiveBusPositions,
   getTripAnalytics,
-  exportTripsCSV
+  exportTripsCSV,
+  getAttendanceQrCatalog,
+  generateAttendanceQr,
+  generateAttendanceQrByRoute
 };

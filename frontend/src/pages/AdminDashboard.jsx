@@ -186,21 +186,69 @@ const AdminDashboard = () => {
     );
   }
 
+  // Get trip details for SOS alert
+  const sosTrip = sosAlert ? trips.find(t => t._id === sosAlert.tripId) : null;
+
   return (
     <main className="min-h-screen pb-8">
-      {/* SOS Alert */}
+      {/* SOS Alert Banner - Top Warning */}
       {sosAlert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="card-elevated p-6 max-w-sm w-full text-center bg-red-950 border-red-500/50">
-            <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4 animate-pulse">
-              <AlertTriangle className="w-8 h-8 text-red-400" />
+        <div className="sticky top-0 z-40 bg-gradient-to-r from-red-950 via-red-900 to-orange-950 border-b-2 border-red-500/50 shadow-2xl">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex items-start gap-4 sm:items-center sm:gap-6">
+              <div className="flex-shrink-0 flex items-center gap-2">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-red-500 rounded-full animate-pulse" style={{ opacity: 0.5 }}></div>
+                  <div className="relative w-10 h-10 rounded-full bg-red-500/30 flex items-center justify-center border border-red-400">
+                    <AlertTriangle className="w-5 h-5 text-red-300 animate-bounce" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-red-200 uppercase tracking-wider">🚨 EMERGENCY SOS ALERT</p>
+                    <p className="text-white font-semibold mt-1">{sosAlert.message}</p>
+                    {sosTrip && (
+                      <div className="text-xs text-red-100 mt-2 space-y-1">
+                        <p>🚌 Bus: <span className="font-medium">{sosTrip.bus?.name || 'Unknown'}</span> • Plate: <span className="font-medium">{sosTrip.bus?.licensePlate || 'N/A'}</span></p>
+                        <p>👨‍✈️ Driver: <span className="font-medium">{sosTrip.driver?.name || sosTrip.driver?.username || 'Unknown'}</span></p>
+                        <p>🛣️ Route: <span className="font-medium">{sosTrip.route?.name || 'N/A'}</span></p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {sosAlert.location && (
+                      <a
+                        href={`https://maps.google.com/?q=${sosAlert.location.lat},${sosAlert.location.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/20 text-blue-200 hover:bg-blue-500/30 transition text-sm font-medium border border-blue-400/30"
+                      >
+                        <MapPin className="w-4 h-4" />
+                        Live Location
+                      </a>
+                    )}
+                    <button
+                      onClick={() => setSosAlert(null)}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 text-red-100 hover:bg-white/20 transition text-sm font-medium"
+                    >
+                      <Octagon className="w-4 h-4" />
+                      Acknowledge
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => setSosAlert(null)}
+                className="flex-shrink-0 text-red-200 hover:text-red-100 transition"
+              >
+                <span className="text-2xl">×</span>
+              </button>
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Emergency Alert</h2>
-            <p className="text-red-200 mb-2">{sosAlert.message}</p>
-            <p className="text-red-300/60 text-xs mb-4">Trip: {sosAlert.tripId}</p>
-            <button onClick={() => setSosAlert(null)} className="w-full py-3 bg-white/10 rounded-xl text-white font-medium hover:bg-white/20 transition">
-              Dismiss
-            </button>
           </div>
         </div>
       )}

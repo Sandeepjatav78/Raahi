@@ -11,6 +11,14 @@ const driverIcon = new L.Icon({
   popupAnchor: [0, -20]
 });
 
+const busIcon = new L.Icon({
+  iconUrl: '/markers/bus.png',
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+  popupAnchor: [0, -18],
+  className: 'bus-marker-history'
+});
+
 const stopIcon = new L.Icon({
   iconUrl: '/markers/stop.png',
   iconSize: [30, 30],
@@ -56,20 +64,31 @@ const LiveViewport = ({ position }) => {
   return null;
 };
 
-const DriverMap = ({ lastPosition, route, children }) => {
+const normalizePoint = (point) => {
+  if (!point) return null;
+  const lat = point.lat ?? point.latitude;
+  const lng = point.lng ?? point.longitude;
+  return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null;
+};
+
+const DriverMap = ({ lastPosition, busLocation, route, children }) => {
   const stops = useMemo(() => deriveStops(route), [route]);
   const polylineCoords = useMemo(() => {
     if (!route?.geojson?.coordinates) return [];
     return route.geojson.coordinates.map(([lng, lat]) => [lat, lng]);
   }, [route]);
-  const center = lastPosition || stops[0] || PIET_COLLEGE || ELURU_CENTER;
+  
+  const normalizedDriverLocation = normalizePoint(lastPosition);
+  const normalizedBusLocation = normalizePoint(busLocation);
+
+  const center = normalizedDriverLocation || normalizedBusLocation || stops[0] || PIET_COLLEGE || ELURU_CENTER;
 
   return (
     <section className="surface-card rounded-2xl p-4 shadow">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-sky-200">Driver map</p>
-          <p className="text-sm text-slate-200">Your live GPS and assigned route</p>
+          <p className="text-sm text-slate-200">Your GPS location and bus assigned route</p>
         </div>
       </div>
       <MapContainer center={center} zoom={15} className="h-80 w-full rounded-xl" scrollWheelZoom>
@@ -82,12 +101,28 @@ const DriverMap = ({ lastPosition, route, children }) => {
         <Marker position={PIET_COLLEGE} icon={collegeIcon} title="College">
           <Popup>College</Popup>
         </Marker>
-        {lastPosition && <Marker position={lastPosition} icon={driverIcon} title="You" />}
-        <LiveViewport position={lastPosition} />
+        {normalizedBusLocation && (
+          <Marker
+            position={normalizedBusLocation}
+            icon={busIcon}
+            title="Bus Last Known Location"
+            zIndexOffset={200}
+          >
+            <Popup>
+              Bus Location
+              {normalizedDriverLocation &&
+              normalizedBusLocation[0] === normalizedDriverLocation[0] &&
+              normalizedBusLocation[1] === normalizedDriverLocation[1]
+                ? ' (same as your current position)'
+                : ''}
+            </Popup>
+          </Marker>
+        )}
+        {normalizedDriverLocation && <Marker position={normalizedDriverLocation} icon={driverIcon} title="You (Driver)" zIndexOffset={100} />}
+        <LiveViewport position={normalizedDriverLocation} />
       </MapContainer>
       <p className="mt-2 text-xs text-slate-400">
-        GPS updates refresh as soon as they are emitted from your device. If the marker does not move, check the tracking
-        controls above.
+        Large marker = Your current position • Small marker = Bus last known location • Blue line = Route polyline • 🏫 = College
       </p>
     </section>
   );

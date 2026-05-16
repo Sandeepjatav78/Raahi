@@ -5,7 +5,6 @@ import 'leaflet/dist/leaflet.css';
 import { ELURU_CENTER, TILE_LAYER_ATTRIBUTION, TILE_LAYER_URL } from '../constants/geo';
 
 const DEFAULT_CENTER = ELURU_CENTER;
-const BUS_ICON_URL = '/markers/bus.png';
 const STOP_ICON_URL = '/markers/stop.png';
 
 const createIcon = (iconUrl, options = {}) =>
@@ -17,7 +16,9 @@ const createIcon = (iconUrl, options = {}) =>
     className: options.className
   });
 
-const busIcon = createIcon(BUS_ICON_URL, {
+const busIcon = L.divIcon({
+  className: 'student-bus-map-pin',
+  html: '<div style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(37,99,235,0.92);color:#fff;font-size:19px;box-shadow:0 10px 26px rgba(37,99,235,0.38);border:2px solid rgba(255,255,255,0.9)">🚌</div>',
   iconSize: [40, 40],
   iconAnchor: [20, 20]
 });
@@ -62,7 +63,7 @@ const AnimatedMarker = ({ position, icon, popupText }) => {
   return <Marker ref={markerRef} position={position} icon={icon} title={popupText} />;
 };
 
-const StudentMap = ({ busPosition, stopPosition, collegePosition }) => {
+const StudentMap = ({ busPosition, stopPosition, collegePosition, busLabel = 'Bus' }) => {
   const center = useMemo(() => busPosition || stopPosition || collegePosition || DEFAULT_CENTER, [busPosition, stopPosition, collegePosition]);
 
   return (
@@ -75,7 +76,7 @@ const StudentMap = ({ busPosition, stopPosition, collegePosition }) => {
       </div>
       <MapContainer center={center} zoom={15} minZoom={5} className="h-80 w-full" scrollWheelZoom>
         <TileLayer url={TILE_LAYER_URL} attribution={TILE_LAYER_ATTRIBUTION} />
-        <AnimatedMarker position={busPosition} icon={busIcon} popupText="Bus" />
+        <AnimatedMarker position={busPosition} icon={busIcon} popupText={busLabel} />
         <AnimatedMarker position={stopPosition} icon={stopIcon} popupText="Your stop" />
         <AnimatedMarker position={collegePosition} icon={collegeIcon} popupText="College" />
         <FitBounds busPosition={busPosition} stopPosition={stopPosition} collegePosition={collegePosition} />

@@ -805,7 +805,7 @@ const MapEditor = ({ initialRoute = null, initialStops = [], onSave, panelContai
       {/* Help Text */}
       <p className="text-xs text-slate-500 flex items-center gap-1.5">
         <GripVertical size={12} className="text-slate-400" />
-        Simple flow: draw line -> add stops -> continue. Use advanced tools only if needed.
+        Simple flow: draw line -&gt; add stops -&gt; continue. Use advanced tools only if needed.
       </p>
 
       {/* Error Message */}

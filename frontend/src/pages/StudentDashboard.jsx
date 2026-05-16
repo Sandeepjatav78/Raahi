@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   MapPin, Navigation, Bell, BellOff, RefreshCw, Phone,
-  ChevronRight, AlertTriangle, Gauge, Clock, Bus, Volume2, Settings
+  ChevronRight, AlertTriangle, Gauge, Clock, Bus, Volume2, Settings,
+  List
 } from 'lucide-react';
 import StudentMap from '../components/StudentMap';
 import { useSocket } from '../hooks/useSocket';
@@ -266,11 +267,22 @@ const StudentDashboard = () => {
     setLoading(true);
     try {
       const response = await api.get('/students/me').catch(() => api.get('/auth/me'));
-      const data = response.data;
+      let data = response.data;
 
-      setProfile({ ...user, ...data });
-      setStopInfo(normalizeStop(data));
-      setBusPosition(normalizeLocation(normalizeBus(data)?.lastKnownLocation));
+      // Some legacy student accounts may return null for /students/me until assignment is rebuilt.
+      if (!data || (!normalizeBus(data) && user?.role === 'student')) {
+        const assignmentRes = await api.get('/students/assignment').catch(() => ({ data: null }));
+        if (assignmentRes?.data) {
+          data = assignmentRes.data;
+        }
+      }
+
+      const normalizedBus = normalizeBus(data);
+      const normalizedStop = normalizeStop(data);
+
+      setProfile({ ...user, ...(data || {}), bus: normalizedBus || null });
+      setStopInfo(normalizedStop || null);
+      setBusPosition(normalizeLocation(normalizedBus?.lastKnownLocation));
 
       const tripRes = await api.get('/students/trip').catch(() => ({ data: null }));
       if (tripRes.data) {
@@ -451,6 +463,8 @@ const StudentDashboard = () => {
   const activeEtaTargetLabel = destinationEtaMs
     ? (isMorningCommute ? PIET_COLLEGE_NAME : (stopInfo?.name || 'your stop'))
     : (stopInfo?.name || 'your stop');
+  const displayBusPosition = busPosition;
+  const displayBusLabel = 'Assigned Bus';
 
   // Loading state
   if (loading) {
@@ -475,88 +489,6 @@ const StudentDashboard = () => {
 
   return (
     <main className="sd-page">
-      {/* SOS Alert Modal */}
-      {sosAlert && (
-        <div className="sd-modal-overlay">
-          <div className="sd-modal sd-sos-modal">
-            <div className="sd-sos-icon">
-              <AlertTriangle className="w-8 h-8" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Emergency Alert</h2>
-            <p className="text-red-200 mb-4">{sosAlert.message}</p>
-            <button onClick={() => setSosAlert(null)} className="sd-modal-dismiss">
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="sd-modal-overlay">
-          <div className="sd-modal sd-settings-modal">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Alert Settings</h2>
-              <button onClick={() => setShowSettings(false)} className="sd-modal-close">✕</button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Proximity Minutes */}
-              <div>
-                <label className="sd-settings-label">
-                  Alert when bus is within: <span className="sd-accent-text font-bold">{preferences.proximityMinutes} min</span>
-                </label>
-                <input
-                  type="range"
-                  min="1" max="30"
-                  value={preferences.proximityMinutes}
-                  onChange={(e) => setPreferences(p => ({ ...p, proximityMinutes: Number(e.target.value) }))}
-                  className="sd-range"
-                />
-                <div className="flex justify-between text-xs sd-range-labels mt-1">
-                  <span>1 min</span><span>15 min</span><span>30 min</span>
-                </div>
-              </div>
-
-              {/* Proximity Meters */}
-              <div>
-                <label className="sd-settings-label">
-                  Or within: <span className="sd-accent-text font-bold">{preferences.proximityMeters}m</span>
-                </label>
-                <input
-                  type="range"
-                  min="100" max="2000" step="100"
-                  value={preferences.proximityMeters}
-                  onChange={(e) => setPreferences(p => ({ ...p, proximityMeters: Number(e.target.value) }))}
-                  className="sd-range"
-                />
-                <div className="flex justify-between text-xs sd-range-labels mt-1">
-                  <span>100m</span><span>1km</span><span>2km</span>
-                </div>
-              </div>
-
-              {/* Arrival Alert Toggle */}
-              <div className="sd-toggle-row">
-                <span className="text-white">Arrival alerts</span>
-                <button
-                  onClick={() => setPreferences(p => ({ ...p, arrivalAlert: !p.arrivalAlert }))}
-                  className={`sd-toggle ${preferences.arrivalAlert ? 'sd-toggle-on' : 'sd-toggle-off'}`}
-                >
-                  <span className={`sd-toggle-dot ${preferences.arrivalAlert ? 'translate-x-5' : ''}`} />
-                </button>
-              </div>
-            </div>
-
-            <button
-              onClick={() => { savePreferences(preferences); setShowSettings(false); }}
-              className="sd-btn-primary w-full mt-6"
-            >
-              Save Preferences
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className="sd-container">
         {/* Header */}
         <header className="sd-header sd-card-animate">
@@ -699,7 +631,12 @@ const StudentDashboard = () => {
           <div className="sd-col-main">
             <div className="sd-map-wrap sd-card-animate" style={{ animationDelay: '0.12s' }}>
               <div className="sd-map-inner">
-                <StudentMap busPosition={busPosition} stopPosition={stopPosition} collegePosition={collegePosition} />
+                <StudentMap
+                  busPosition={displayBusPosition}
+                  stopPosition={stopPosition}
+                  collegePosition={collegePosition}
+                  busLabel={displayBusLabel}
+                />
               </div>
             </div>
 

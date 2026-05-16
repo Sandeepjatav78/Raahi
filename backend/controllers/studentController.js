@@ -3,6 +3,106 @@ const Trip = require('../models/Trip');
 const StudentAssignment = require('../models/StudentAssignment');
 const { getCachedTripState } = require('../inMemory/activeTrips');
 const Route = require('../models/Route');
+const Bus = require('../models/Bus');
+const Attendance = require('../models/Attendance');
+
+const extractBusCandidatesFromQr = (qrCodeRaw) => {
+  if (!qrCodeRaw || typeof qrCodeRaw !== 'string') return [];
+
+  const raw = qrCodeRaw.trim();
+  if (!raw) return [];
+
+  const candidates = new Set();
+  const add = (value) => {
+    if (!value || typeof value !== 'string') return;
+    const normalized = value.trim();
+    if (normalized) candidates.add(normalized);
+  };
+
+  // Legacy values: BUS:<id-or-plate> or direct id/plate.
+  add(raw.replace(/^BUS:/i, '').trim());
+  add(raw);
+
+  // Structured payload used by admin QR generator.
+  if (/^RAAHI\|/i.test(raw)) {
+    const parts = raw.split('|').map((part) => part.trim());
+    // Expected: RAAHI|<busId>|<routeId>|<numberPlate>
+    add(parts[1]);
+    add(parts[3]);
+  }
+
+  // JSON payload support, e.g. { busId, numberPlate }
+  if ((raw.startsWith('{') && raw.endsWith('}')) || (raw.startsWith('[') && raw.endsWith(']'))) {
+    try {
+      const parsed = JSON.parse(raw);
+      add(parsed?.busId);
+      add(parsed?.numberPlate);
+      add(parsed?.bus?.id);
+      add(parsed?.bus?.numberPlate);
+    } catch {
+      // Ignore malformed JSON and continue with string candidates.
+    }
+  }
+
+  return Array.from(candidates);
+};
+
+const resolveLegacyStopId = async ({ busId, stopSequence }) => {
+  if (!busId || stopSequence == null) return null;
+
+  const bus = await Bus.findById(busId).select('route').lean();
+  if (!bus?.route) return null;
+
+  const stop = await Stop.findOne({
+    route: bus.route,
+    sequence: Number(stopSequence)
+  }).select('_id');
+
+  return stop?._id || null;
+};
+
+const getOrCreateAssignment = async (user) => {
+  const userId = user?._id?.toString?.() || user?.id;
+  if (!userId) return null;
+
+  let assignment = await StudentAssignment.findOne({ student: userId });
+  const legacyBusId = user?.assignedBusId;
+  const legacyStopSeq = user?.assignedStopId;
+
+  if (!assignment && legacyBusId) {
+    const legacyStopId = await resolveLegacyStopId({ busId: legacyBusId, stopSequence: legacyStopSeq });
+    assignment = await StudentAssignment.findOneAndUpdate(
+      { student: userId },
+      {
+        $setOnInsert: {
+          student: userId,
+          bus: legacyBusId,
+          stop: legacyStopId || null
+        }
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true
+      }
+    );
+    return assignment;
+  }
+
+  if (assignment && !assignment.stop && legacyStopSeq != null) {
+    const legacyStopId = await resolveLegacyStopId({
+      busId: assignment.bus || legacyBusId,
+      stopSequence: legacyStopSeq
+    });
+
+    if (legacyStopId) {
+      assignment.stop = legacyStopId;
+      await assignment.save();
+    }
+  }
+
+  return assignment;
+};
 
 // Improved fallback: works with both stopId and sequence number
 const fallbackEtaMs = async ({ trip, targetStopId, targetStopSeq }) => {
@@ -53,17 +153,19 @@ const fallbackEtaMs = async ({ trip, targetStopId, targetStopSeq }) => {
 const StopEvent = require('../models/StopEvent'); // Required
 
 const getAssignment = async (req, res) => {
-  const assignment = await StudentAssignment.findOne({ student: req.user._id })
-    .populate('bus', 'name numberPlate lastKnownLocation')
-    .populate('stop');
+  const assignment = await getOrCreateAssignment(req.user);
 
   if (!assignment) {
     return res.json(null);
   }
 
+  const hydratedAssignment = await StudentAssignment.findById(assignment._id)
+    .populate('bus', 'name numberPlate lastKnownLocation')
+    .populate('stop');
+
   // Fetch recent events for the active trip of this bus
   let recentEvents = [];
-  const activeTrip = await Trip.findOne({ bus: assignment.bus._id, status: 'ONGOING' });
+  const activeTrip = await Trip.findOne({ bus: hydratedAssignment.bus?._id, status: 'ONGOING' });
 
   if (activeTrip) {
     recentEvents = await StopEvent.find({ trip: activeTrip._id })
@@ -72,16 +174,20 @@ const getAssignment = async (req, res) => {
       .lean();
   }
 
-  const response = assignment.toObject();
+  const response = hydratedAssignment.toObject();
   response.recentEvents = recentEvents;
 
   res.json(response);
 };
 
 const getEta = async (req, res) => {
-  const assignment = await StudentAssignment.findOne({ student: req.user._id })
+  const assignmentDoc = await getOrCreateAssignment(req.user);
+  const assignment = assignmentDoc
+    ? await StudentAssignment.findById(assignmentDoc._id)
     .populate('stop')
-    .populate('bus');
+    .populate('bus')
+    : null;
+
   if (!assignment) {
     return res.status(404).json({ message: 'No assignment found' });
   }
@@ -141,8 +247,12 @@ const getEta = async (req, res) => {
 
 const registerNotificationToken = async (req, res) => {
   const { token } = req.body;
-  const assignment = await StudentAssignment.findOneAndUpdate(
-    { student: req.user._id },
+  const assignmentDoc = await getOrCreateAssignment(req.user);
+  if (!assignmentDoc) {
+    return res.status(404).json({ message: 'No assignment found' });
+  }
+  const assignment = await StudentAssignment.findByIdAndUpdate(
+    assignmentDoc._id,
     { notificationToken: token },
     { new: true }
   );
@@ -150,7 +260,7 @@ const registerNotificationToken = async (req, res) => {
 };
 
 const getLiveTrip = async (req, res) => {
-  const assignment = await StudentAssignment.findOne({ student: req.user._id });
+  const assignment = await getOrCreateAssignment(req.user);
   if (!assignment) {
     return res.json(null); // No assignment yet — not an error
   }
@@ -251,7 +361,6 @@ const getNotificationPreferences = async (req, res) => {
 };
 
 // Update student's own assignment (bus/stop)
-const Bus = require('../models/Bus');
 
 const updateMyAssignment = async (req, res) => {
   try {
@@ -370,6 +479,135 @@ const getBusesWithRoutes = async (req, res) => {
   }
 };
 
+const getLiveBusesForStudents = async (req, res) => {
+  try {
+    const [buses, assignment] = await Promise.all([
+      Bus.find({ isActive: true })
+        .populate('route', 'name')
+        .populate('driver', 'name username')
+        .select('name numberPlate route driver lastKnownLocation isActive')
+        .lean(),
+      getOrCreateAssignment(req.user)
+    ]);
+
+    const busIds = buses.map((bus) => bus._id);
+    const activeTrips = await Trip.find({ status: 'ONGOING', bus: { $in: busIds } })
+      .populate('route', 'name')
+      .select('_id bus route lastLocation')
+      .lean();
+
+    const tripMap = new Map(activeTrips.map((trip) => [String(trip.bus), trip]));
+    const assignedBusId = assignment?.bus ? String(assignment.bus) : null;
+
+    const result = buses
+      .map((bus) => {
+        const activeTrip = tripMap.get(String(bus._id));
+        const effectiveLocation = activeTrip?.lastLocation || bus.lastKnownLocation || null;
+        return {
+          _id: bus._id,
+          name: bus.name,
+          numberPlate: bus.numberPlate,
+          routeName: bus.route?.name || activeTrip?.route?.name || 'Unassigned route',
+          driverName: bus.driver?.name || bus.driver?.username || 'No driver',
+          lastKnownLocation: effectiveLocation,
+          isLive: Boolean(activeTrip),
+          tripId: activeTrip?._id || null,
+          isAssignedToMe: assignedBusId ? assignedBusId === String(bus._id) : false
+        };
+      })
+      .sort((a, b) => {
+        if (a.isAssignedToMe && !b.isAssignedToMe) return -1;
+        if (!a.isAssignedToMe && b.isAssignedToMe) return 1;
+        if (a.isLive && !b.isLive) return -1;
+        if (!a.isLive && b.isLive) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+    res.json(result);
+  } catch (error) {
+    console.error('getLiveBusesForStudents error:', error);
+    res.status(500).json({ message: 'Failed to fetch live buses', error: error.message });
+  }
+};
+
+const markAttendanceByQr = async (req, res) => {
+  try {
+    const qrCodeRaw = typeof req.body?.qrCode === 'string' ? req.body.qrCode.trim() : '';
+    if (!qrCodeRaw) {
+      return res.status(400).json({ message: 'QR code is required' });
+    }
+
+    const qrCandidates = extractBusCandidatesFromQr(qrCodeRaw);
+    const assignmentDoc = await getOrCreateAssignment(req.user);
+    const assignment = assignmentDoc
+      ? await StudentAssignment.findById(assignmentDoc._id).populate('bus', 'name numberPlate')
+      : null;
+
+    if (!assignment?.bus) {
+      return res.status(400).json({ message: 'No bus assignment found for student' });
+    }
+
+    const assignedBusId = String(assignment.bus._id);
+    const assignedPlate = assignment.bus.numberPlate?.toUpperCase();
+    const isMatchedToAssignedBus = qrCandidates.some((candidate) => {
+      const normalizedCandidate = candidate.trim();
+      return (
+        normalizedCandidate === assignedBusId ||
+        normalizedCandidate.toUpperCase() === assignedPlate
+      );
+    });
+
+    if (!isMatchedToAssignedBus) {
+      return res.status(400).json({
+        message: 'Scanned QR does not match your assigned bus',
+        assignedBus: {
+          id: assignment.bus._id,
+          name: assignment.bus.name,
+          numberPlate: assignment.bus.numberPlate
+        }
+      });
+    }
+
+    const activeTrip = await Trip.findOne({ bus: assignment.bus._id, status: 'ONGOING' }).select('_id');
+    const attendanceDate = new Date();
+    attendanceDate.setHours(0, 0, 0, 0);
+
+    const attendance = await Attendance.findOneAndUpdate(
+      {
+        student: req.user._id,
+        bus: assignment.bus._id,
+        attendanceDate
+      },
+      {
+        $set: {
+          qrCode: qrCodeRaw,
+          trip: activeTrip?._id || null,
+          scannedAt: new Date(),
+          status: 'present'
+        }
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true
+      }
+    );
+
+    res.json({
+      message: 'Attendance marked successfully',
+      attendance,
+      bus: {
+        _id: assignment.bus._id,
+        name: assignment.bus.name,
+        numberPlate: assignment.bus.numberPlate
+      }
+    });
+  } catch (error) {
+    console.error('markAttendanceByQr error:', error);
+    res.status(500).json({ message: 'Failed to mark attendance', error: error.message });
+  }
+};
+
 module.exports = {
   getAssignment,
   getEta,
@@ -378,5 +616,7 @@ module.exports = {
   updateNotificationPreferences,
   getNotificationPreferences,
   updateMyAssignment,
-  getBusesWithRoutes
+  getBusesWithRoutes,
+  getLiveBusesForStudents,
+  markAttendanceByQr
 };

@@ -9,7 +9,9 @@ const {
   updateNotificationPreferences,
   getNotificationPreferences,
   updateMyAssignment,
-  getBusesWithRoutes
+  getBusesWithRoutes,
+  getLiveBusesForStudents,
+  markAttendanceByQr
 } = require('../controllers/studentController');
 
 const router = express.Router();
@@ -24,6 +26,8 @@ router.post('/notifications', registerNotificationToken);
 router.get('/preferences', getNotificationPreferences);
 router.put('/preferences', updateNotificationPreferences);
 router.get('/buses', getBusesWithRoutes);
+router.get('/live-buses', getLiveBusesForStudents);
+router.post('/attendance/scan', markAttendanceByQr);
 router.put('/assignment', updateMyAssignment);
 
 module.exports = router;

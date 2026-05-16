@@ -8,6 +8,91 @@ const User = require('../models/User');
 const { sendPushNotification } = require('../utils/notificationService');
 const { createEventRecord } = require('./eventController');
 
+const EMERGENCY_SEARCH_RADIUS_METERS = Number(process.env.EMERGENCY_SEARCH_RADIUS_METERS) || 5000;
+
+const haversineMeters = (a, b) => {
+  if (!a || !b) return Infinity;
+  const toRad = (value) => (value * Math.PI) / 180;
+  const R = 6371000;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+  return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+};
+
+const normalizePhone = (value) => {
+  if (!value || typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const cleaned = trimmed.replace(/[^\d+]/g, '');
+  return cleaned || null;
+};
+
+const buildPlace = (element, origin) => {
+  const tags = element.tags || {};
+  const location = element.center || element;
+  if (typeof location.lat !== 'number' || typeof location.lon !== 'number') return null;
+
+  const category =
+    tags.amenity === 'hospital' ? 'hospital' :
+    tags.amenity === 'police' ? 'police' :
+    tags.amenity === 'clinic' ? 'clinic' :
+    tags.amenity === 'fire_station' ? 'fire_station' :
+    tags.emergency === 'ambulance_station' ? 'ambulance_station' :
+    'emergency';
+
+  const phone = normalizePhone(tags['contact:phone'] || tags.phone || tags['contact:mobile'] || tags.telephone);
+
+  return {
+    id: `${element.type || 'node'}-${element.id}`,
+    name: tags.name || tags['operator'] || `${category.replace(/_/g, ' ')} nearby`,
+    category,
+    phone,
+    address: [tags['addr:street'], tags['addr:city'], tags['addr:state']].filter(Boolean).join(', '),
+    lat: location.lat,
+    lng: location.lon,
+    distanceMeters: Math.round(haversineMeters(origin, { lat: location.lat, lng: location.lon }))
+  };
+};
+
+const fetchNearbyEmergencyServices = async (lat, lng) => {
+  const overpassQuery = `
+    [out:json][timeout:25];
+    (
+      node(around:${EMERGENCY_SEARCH_RADIUS_METERS},${lat},${lng})["amenity"~"hospital|police|clinic|fire_station"];
+      way(around:${EMERGENCY_SEARCH_RADIUS_METERS},${lat},${lng})["amenity"~"hospital|police|clinic|fire_station"];
+      relation(around:${EMERGENCY_SEARCH_RADIUS_METERS},${lat},${lng})["amenity"~"hospital|police|clinic|fire_station"];
+      node(around:${EMERGENCY_SEARCH_RADIUS_METERS},${lat},${lng})["emergency"~"ambulance_station|dispatch_center"];
+      way(around:${EMERGENCY_SEARCH_RADIUS_METERS},${lat},${lng})["emergency"~"ambulance_station|dispatch_center"];
+      relation(around:${EMERGENCY_SEARCH_RADIUS_METERS},${lat},${lng})["emergency"~"ambulance_station|dispatch_center"];
+    );
+    out center tags;
+  `;
+
+  const response = await fetch('https://overpass-api.de/api/interpreter', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `data=${encodeURIComponent(overpassQuery)}`
+  });
+
+  if (!response.ok) {
+    throw new Error(`Overpass request failed (${response.status})`);
+  }
+
+  const data = await response.json();
+  const origin = { lat: Number(lat), lng: Number(lng) };
+
+  return (Array.isArray(data.elements) ? data.elements : [])
+    .map((element) => buildPlace(element, origin))
+    .filter(Boolean)
+    .sort((a, b) => a.distanceMeters - b.distanceMeters)
+    .slice(0, 12);
+};
+
 const computeSnapshotEtaMinutes = ({ orderedStops = [], currentIndex = 0, targetStopId, defaultMinutes = Number(process.env.DEFAULT_ETA_MINUTES) || 2 }) => {
   if (!orderedStops.length || !targetStopId) {
     return defaultMinutes;
@@ -282,6 +367,37 @@ const getDriverAssignedBus = async (req, res) => {
   res.json(driver?.driverMeta?.bus || null);
 };
 
+const getNearbyEmergencyServices = async (req, res) => {
+  const lat = Number(req.query.lat ?? req.body?.lat);
+  const lng = Number(req.query.lng ?? req.body?.lng);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return res.status(400).json({ message: 'lat and lng are required' });
+  }
+
+  try {
+    const services = await fetchNearbyEmergencyServices(lat, lng);
+    res.json({
+      origin: { lat, lng },
+      services,
+      quickContacts: {
+        ambulance: { label: 'Ambulance', phone: '108' },
+        police: { label: 'Police', phone: '100' }
+      }
+    });
+  } catch (error) {
+    console.error('getNearbyEmergencyServices error', error);
+    res.status(500).json({
+      message: 'Failed to fetch nearby emergency services',
+      quickContacts: {
+        ambulance: { label: 'Ambulance', phone: '108' },
+        police: { label: 'Police', phone: '100' }
+      },
+      services: []
+    });
+  }
+};
+
 module.exports = {
   createDriverAccount,
   getDrivers,
@@ -293,5 +409,6 @@ module.exports = {
   endTrip,
   markApproaching,
   getDriverActiveTrip,
-  getDriverAssignedBus
+  getDriverAssignedBus,
+  getNearbyEmergencyServices
 };

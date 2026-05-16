@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Raahi",
+    "slug": "raahi-mobile",
+    "scheme": "raahi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "platforms": ["ios", "android"],
+    "userInterfaceStyle": "light",
+    "plugins": ["expo-location"],
+    "ios": {
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Raahi needs your location to broadcast live driver GPS updates."
+      }
+    },
+    "android": {
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "splash": {
+      "backgroundColor": "#0f172a"
+    }
+  }
+}

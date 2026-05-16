@@ -1323,6 +1323,12 @@ input, select, textarea {
   background: #f8f9fb;
 }
 
+@media (max-width: 1023px) {
+  .login-page {
+    flex-direction: column;
+  }
+}
+
 /* ---- LEFT HERO PANEL ---- */
 .login-hero {
   position: relative;
@@ -1477,6 +1483,15 @@ input, select, textarea {
   background: #f8f9fb;
   position: relative;
   overflow-y: auto;
+  min-height: 100dvh;
+}
+
+@media (max-width: 1023px) {
+  .login-form-panel {
+    width: 100%;
+    min-height: 100dvh;
+    padding: 1rem;
+  }
 }
 
 /* ---- AUTH CARD ---- */
@@ -1490,11 +1505,20 @@ input, select, textarea {
     0 1px 3px rgba(0, 0, 0, 0.04),
     0 8px 24px rgba(0, 0, 0, 0.06);
   position: relative;
+  z-index: 1;
 }
 
 @media (min-width: 640px) {
   .login-card {
     padding: 2.75rem 2.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .login-card {
+    max-width: 100%;
+    padding: 1.5rem 1.1rem;
+    border-radius: 1rem;
   }
 }
 
@@ -1563,6 +1587,8 @@ input, select, textarea {
   border: 1.5px solid #e5e7eb;
   background: #f9fafb;
   color: #111827;
+  -webkit-text-fill-color: #111827;
+  caret-color: #111827;
   font-size: 0.925rem;
   transition: all 0.2s ease;
 }
@@ -1729,6 +1755,8 @@ body:not([data-theme]) .login-input {
   background: rgba(15, 23, 42, 0.6);
   border-color: rgba(255, 255, 255, 0.1);
   color: #f1f5f9;
+  -webkit-text-fill-color: #f1f5f9;
+  caret-color: #f1f5f9;
 }
 
 [data-theme="dark"] .login-input::placeholder,
@@ -1741,6 +1769,29 @@ body:not([data-theme]) .login-input:focus {
   border-color: #0ea5e9;
   box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
   background: rgba(15, 23, 42, 0.8);
+}
+
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover,
+.login-input:-webkit-autofill:focus,
+.login-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #111827;
+  caret-color: #111827;
+  box-shadow: 0 0 0 1000px #f9fafb inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+[data-theme="dark"] .login-input:-webkit-autofill,
+[data-theme="dark"] .login-input:-webkit-autofill:hover,
+[data-theme="dark"] .login-input:-webkit-autofill:focus,
+[data-theme="dark"] .login-input:-webkit-autofill:active,
+body:not([data-theme]) .login-input:-webkit-autofill,
+body:not([data-theme]) .login-input:-webkit-autofill:hover,
+body:not([data-theme]) .login-input:-webkit-autofill:focus,
+body:not([data-theme]) .login-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #f1f5f9;
+  caret-color: #f1f5f9;
+  box-shadow: 0 0 0 1000px rgba(15, 23, 42, 0.9) inset;
 }
 
 [data-theme="dark"] .login-hint,
@@ -2752,6 +2803,58 @@ body:not([data-theme]) .profile-save-wrap {
   transition: color 0.2s;
 }
 .sd-modal-close:hover { color: #fff; }
+
+/* ---- Bottom quick actions ---- */
+.sd-bottom-actions {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0.8rem;
+  width: min(96vw, 760px);
+  z-index: 42;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 1rem;
+  background: rgba(2, 6, 23, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.sd-bottom-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.6rem 0.45rem;
+  transition: all 0.2s ease;
+}
+
+.sd-bottom-action-btn:hover {
+  border-color: rgba(14, 165, 233, 0.55);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.sd-bottom-action-accent {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.9), rgba(2, 132, 199, 0.95));
+  border-color: transparent;
+  color: #fff;
+}
+
+@media (min-width: 1024px) {
+  .sd-bottom-actions {
+    width: min(78vw, 640px);
+  }
+}
 
 /* Settings-specific */
 .sd-settings-label {
@@ -5403,6 +5506,132 @@ body:not([data-theme]) .sd-page {
 .dd-sos-tag:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #f1f5f9;
+}
+
+.dd-emergency-panel {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: left;
+}
+
+.dd-emergency-panel-header {
+  margin-bottom: 0.75rem;
+}
+
+.dd-emergency-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem;
+  margin-bottom: 0.625rem;
+}
+
+.dd-emergency-call {
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  border-radius: 12px;
+  border: none;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.dd-emergency-call:hover {
+  transform: translateY(-1px);
+}
+
+.dd-emergency-call-ambulance {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.22);
+}
+
+.dd-emergency-call-police {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+}
+
+.dd-emergency-call-hospital {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 8px 18px rgba(245, 158, 11, 0.2);
+}
+
+.dd-emergency-refresh {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.dd-emergency-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  max-height: 12rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.dd-emergency-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dd-emergency-item-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.dd-emergency-item-meta {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.dd-emergency-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 6rem;
+  align-items: stretch;
+}
+
+.dd-emergency-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(14, 165, 233, 0.15);
+  color: #7dd3fc;
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.dd-emergency-mini-btn:hover {
+  background: rgba(14, 165, 233, 0.22);
+}
+
+.dd-emergency-mini-btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dd-emergency-mini-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .dd-modal-actions {
